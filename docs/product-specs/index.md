@@ -34,6 +34,8 @@ This dependency order does not require completing every library feature before i
 
 The active specifications approve implementation of the Foundations and Import to Songs List delivery slices. Concrete SwiftData fields, managed-file layout, type boundaries, and reconciliation mechanisms remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
 
+The approved technical plan for that scope is [Import to Songs List Execution Plan](../execution-plans/import-to-songs-list.md).
+
 Basic Playback and Playback Integration remain Proposed. Their unresolved decisions do not block Import to Songs List, but behavior owned only by those specifications must not be claimed as complete until the owning specification becomes Active.
 
 ## Recommended delivery slices

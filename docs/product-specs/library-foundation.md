@@ -50,7 +50,8 @@ This specification describes product-level ownership and consistency rules. It d
 - A new song receives an opaque, app-assigned UUID when its creation begins.
 - The UUID is persisted with the song and never changes during metadata updates, resource recovery, or app relaunches.
 - The UUID is not derived from filename, metadata, file location, or content fingerprint.
-- Content fingerprints are duplicate-detection evidence, not song identity. A potential fingerprint match must also have the same byte count and be verified as the same complete file content before Resona applies duplicate behavior.
+- Content fingerprints are duplicate-detection evidence, not song identity. The fingerprint consists of a collision-resistant digest of the complete file bytes plus the byte count.
+- When the existing managed resource is available, Resona confirms a fingerprint match by comparing the complete bytes before applying duplicate behavior. When that resource is unavailable, the persisted digest and byte count are the recovery evidence used to restore the existing identity because no retained bytes remain to compare.
 - Re-importing a song that the user previously removed is a new import with a new identity. Identity preservation applies only while the unavailable song still belongs to the library.
 
 ## Minimum song information
