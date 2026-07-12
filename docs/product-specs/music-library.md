@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Active
 
 ## User outcome
 
@@ -87,6 +87,20 @@ The songs list must be independently testable before library management is consi
 - Removing a queued but non-current song removes all of its queue occurrences before deleting its library data.
 - The removal confirmation states when the action will stop current playback.
 
+## Display terminology
+
+- User-facing fallback strings are localized equivalents of “Unknown Title,” “Unknown Artist,” and “Unknown Album.”
+- A non-empty source filename without its extension takes precedence over “Unknown Title,” as defined by Library Foundation.
+- Unavailable songs use a localized “Unavailable” status in addition to a non-color visual treatment.
+
+## Removal policy
+
+- Removal is immediately destructive after confirmation and has no Undo period.
+- The confirmation states that Resona's managed audio and artwork will be deleted, the original external file will not be changed, and current playback will stop when applicable.
+- The song becomes unavailable to new selection as soon as removal begins.
+- If cleanup cannot finish, the song is not restored as playable. Resona identifies it in removal feedback and offers Try Again while automatic reconciliation remains pending.
+- Album browsing, artist browsing, and search remain later delivery stages and do not block the Songs List or Library Management stages.
+
 ## Failure cases
 
 - The persisted audio resource is missing or inaccessible.
@@ -112,12 +126,7 @@ The songs list must be independently testable before library management is consi
 - Removing a song requires confirmation and leaves database and app-managed storage consistent.
 - Removing a song never deletes or modifies the user's original external file.
 - Removing the current song stops playback and leaves no current or queued reference to the removed identity.
-
-## Open questions
-
-- What terminology and fallback strings are used for unknown title, artist, and album?
-- Is removal immediately destructive, or does Resona offer an undo period?
-- When should album browsing, artist browsing, and search enter the delivery sequence?
+- Confirmed removal offers no Undo, never restores the song as playable after interruption, and provides Try Again when cleanup cannot finish.
 
 ## Related documents
 

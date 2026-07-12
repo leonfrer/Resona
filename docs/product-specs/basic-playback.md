@@ -42,6 +42,8 @@ Users can start an available imported song and reliably control foreground playb
 4. The user plays, pauses, or seeks within the current song.
 5. The player UI reflects the state of audible playback.
 
+The library's current-song affordance presents the detailed player in a sheet without issuing a playback command. Dismissing the sheet returns to the same library context without changing playback.
+
 ## Behavioral requirements
 
 - Playback has one authoritative state owner.
@@ -79,7 +81,6 @@ Users can start an available imported song and reliably control foreground playb
 
 ## Decisions required before Active
 
-- Define the initial player presentation and how the user returns to the current song.
 - Define the actionable user message and recovery option for each resource or playback failure category.
 - Define seek behavior while duration is unknown or playback is still preparing.
 

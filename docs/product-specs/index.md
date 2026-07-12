@@ -23,12 +23,18 @@ This dependency order does not require completing every library feature before i
 
 | Specification | Status | Implementation |
 | --- | --- | --- |
-| [Experience foundation](experience-foundation.md) | Proposed | Not started |
-| [Library foundation](library-foundation.md) | Proposed | Not started |
-| [Local audio import](local-audio-import.md) | Proposed | Not started |
-| [Music library](music-library.md) | Proposed | Not started |
+| [Experience foundation](experience-foundation.md) | Active | Not started |
+| [Library foundation](library-foundation.md) | Active | Not started |
+| [Local audio import](local-audio-import.md) | Active | Not started |
+| [Music library](music-library.md) | Active | Not started |
 | [Basic playback](basic-playback.md) | Proposed | Not started |
 | [Playback integration](playback.md) | Proposed | Not started |
+
+## Implementation readiness
+
+The active specifications approve implementation of the Foundations and Import to Songs List delivery slices. Concrete SwiftData fields, managed-file layout, type boundaries, and reconciliation mechanisms remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
+
+Basic Playback and Playback Integration remain Proposed. Their unresolved decisions do not block Import to Songs List, but behavior owned only by those specifications must not be claimed as complete until the owning specification becomes Active.
 
 ## Recommended delivery slices
 

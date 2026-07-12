@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Active
 
 ## Purpose
 
@@ -45,6 +45,14 @@ This specification describes product-level ownership and consistency rules. It d
 - Creation and removal must recover to a consistent state after failure or interruption, without presenting partial records as playable songs or leaving unmanaged partial files.
 - Removing a library song never modifies or deletes the original external file.
 
+## Stable identity
+
+- A new song receives an opaque, app-assigned UUID when its creation begins.
+- The UUID is persisted with the song and never changes during metadata updates, resource recovery, or app relaunches.
+- The UUID is not derived from filename, metadata, file location, or content fingerprint.
+- Content fingerprints are duplicate-detection evidence, not song identity. A potential fingerprint match must also have the same byte count and be verified as the same complete file content before Resona applies duplicate behavior.
+- Re-importing a song that the user previously removed is a new import with a new identity. Identity preservation applies only while the unavailable song still belongs to the library.
+
 ## Minimum song information
 
 The product model must be able to represent:
@@ -69,6 +77,24 @@ The exact persisted fields and representation remain architecture and implementa
 - Missing or unreadable artwork uses a standard artwork placeholder and does not invalidate a song.
 - Duration is derived from the validated managed audio resource and is not accepted from untrusted text metadata.
 
+## Artwork ownership
+
+- Successfully extracted artwork is stored as optional app-managed artwork associated with the stable song identity, separately from the persisted normalized metadata.
+- Artwork can be replaced or re-derived without changing song identity or audio-resource availability.
+- Missing, unreadable, or lost managed artwork falls back to the standard placeholder and does not make the song unavailable.
+- Removing a song also removes its app-managed artwork. Failure to clean up artwork follows the same retry rules as other app-owned resources.
+
+## Consistency and recovery
+
+- Creation uses a private pending state that is never exposed as a playable library song.
+- A creation becomes visible only after the complete managed audio resource is in its final app-owned location and the durable song record references it.
+- If creation fails before that point, Resona removes its pending record and partial app-owned resources. Retrying starts the file's creation again without exposing the previous pending identity.
+- Resona reconciles interrupted pending operations when the library opens after launch and before starting another library mutation. It removes abandoned creation resources and resumes cleanup for accepted removals.
+- After the user confirms removal, Resona first makes the identity unavailable to new playback and clears required playback references, then durably records the removal intent before deleting its app-owned resources and active song record.
+- An accepted removal has no Undo period. It must not reappear as a playable song after interruption, even while physical cleanup is pending.
+- If removal cleanup cannot finish, Resona retries automatically on a later reconciliation and reports the affected song with a Try Again action. A pending-removal record is not treated as an active library song or a duplicate-import match.
+- Recovery must converge without an active record that claims a missing resource is playable and without an untracked partial resource. Diagnostic cleanup failures may be retained internally for retry, but are never presented as successful active songs.
+
 ## Supported audio policy
 
 The first release accepts unprotected, locally readable audio in these container and codec families:
@@ -90,13 +116,8 @@ File extensions and picker content types are initial filters, not proof of valid
 - A missing managed audio resource is reported as unavailable rather than as successful playback.
 - Re-importing matching content restores an unavailable song without changing its stable identity.
 - Failed or interrupted creation and removal recover without a playable partial record or an unmanaged partial audio file.
+- Relaunch reconciliation removes abandoned creation state and resumes accepted removal cleanup without restoring a playable deleted song.
 - Removing a song removes its app-owned data according to the resolved removal policy and never changes the original external file.
-
-## Decisions required before Active
-
-- Define the stable identity generation and persistence guarantees at the product level.
-- Define the consistency and retry behavior when database and managed-file operations only partially succeed.
-- Define whether artwork is stored separately, derived again when needed, or embedded in normalized library data.
 
 ## Related documents
 

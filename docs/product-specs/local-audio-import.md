@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Active
 
 ## User outcome
 
@@ -56,6 +56,30 @@ Users can select supported audio files from the Files app and add them to a loca
 - Matching filenames or display metadata alone do not make two files duplicates.
 - Import validates audio and extracts the canonical title, artist, album, and duration before committing a song. Artwork may finish asynchronously after the valid song and managed audio copy are committed.
 
+## Progress and cancellation
+
+- After the picker returns one or more files, Resona presents an import sheet for that operation.
+- The sheet shows the number of files completed out of the total and identifies the file currently being handled when useful.
+- The sheet remains presented while work is active and cannot be dismissed interactively as an alternative to cancellation.
+- Cancel stops pending work and cooperatively cancels in-progress work at a safe cleanup boundary. Files already committed remain imported; canceled and partial files create no active song or unmanaged partial resource.
+- If the app is suspended or terminated before an import finishes, completed files remain imported and launch reconciliation removes incomplete state. Resona does not report unfinished files as successful or resume access to external files without valid access.
+- The result summary counts imported, restored, already imported, failed, and canceled files separately. Per-file details identify non-success outcomes by source filename when available.
+
+## Failure feedback and recovery
+
+| Outcome | Feedback | Primary next action |
+| --- | --- | --- |
+| Unsupported container, codec, protected media, or video-only file | The file is not supported and no song is created. | Choose Files |
+| Corrupted or persistently unreadable audio | The file could not be read as valid audio and no song is created. | Choose Files |
+| External access was lost or temporarily failed | The file could not be accessed and no song is created. | Try Again when access remains valid; otherwise Choose Files |
+| Insufficient local storage | The file was not imported and the message tells the user to free device storage. | Try Again |
+| Duplicate of an available song | The file is reported as Already Imported; this is informational, not a failure. | Done |
+| Matching unavailable song restored | The existing song is reported as restored and keeps its identity. | Done |
+| Metadata or artwork warning | The audio import succeeds; fallback presentation is used for unreadable optional values. | Done |
+| User cancellation | Completed imports remain and unfinished selections are reported as canceled, not failed. | Choose Files |
+
+Try Again retries only the affected file; it does not repeat unrelated successful imports.
+
 ## Failure cases
 
 - Unsupported audio format
@@ -74,15 +98,13 @@ Users can select supported audio files from the Files app and add them to a loca
 - An unsupported file creates no valid library item and is reported as unsupported with an action to choose a different file.
 - Files with missing optional metadata can still be imported and displayed with fallbacks.
 - Canceling the picker produces no error and no library change.
+- Canceling active import work preserves already committed songs and leaves no active song or partial managed resource for unfinished files.
 - A failed or interrupted import leaves no incomplete record or orphaned managed file.
 - Re-importing an exact byte-identical file whose existing song remains available creates no second song and reports that it was already imported.
 - Re-importing content for a matching unavailable song restores that song without changing its stable identity.
 - Different files with identical filenames or display metadata can be imported as distinct songs.
-
-## Open questions
-
-- What progress and cancellation controls are required for large multi-file imports?
-- Which import failures are shown per file, and which recovery action is offered for each?
+- Every failed file is identifiable in the result and offers the recovery action defined for its failure category.
+- Import progress, result counts, cancellation, and per-file recovery follow the defined import-flow contract.
 
 ## Related documents
 
