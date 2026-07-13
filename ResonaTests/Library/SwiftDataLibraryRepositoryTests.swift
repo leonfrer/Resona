@@ -72,6 +72,36 @@ struct SwiftDataLibraryRepositoryTests {
         #expect(songs[0].availability == .unavailable)
     }
 
+    @Test func reportsAllManagedResourceReferences() async throws {
+        let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
+        let repository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: StubLibraryResourceResolver()
+        )
+        try await repository.insert(
+            draft(
+                id: UUID(),
+                digest: "first",
+                audioFilename: "first.m4a",
+                title: "First",
+                artworkFilename: "first.jpg"
+            )
+        )
+        try await repository.insert(
+            draft(
+                id: UUID(),
+                digest: "second",
+                audioFilename: "second.mp3",
+                title: "Second"
+            )
+        )
+
+        let references = try await repository.resourceReferences()
+
+        #expect(references.audioFilenames == ["first.m4a", "second.mp3"])
+        #expect(references.artworkFilenames == ["first.jpg"])
+    }
+
     @Test func findsOnlyMatchingFingerprintCandidates() async throws {
         let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
         let firstAudioURL = URL(fileURLWithPath: "/tmp/managed/first.wav")

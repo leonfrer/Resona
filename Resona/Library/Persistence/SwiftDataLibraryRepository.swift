@@ -51,6 +51,14 @@ actor SwiftDataLibraryRepository: LibraryRepository {
         return LibrarySongSorting.sorted(songs, locale: locale)
     }
 
+    func resourceReferences() throws -> LibraryResourceReferences {
+        let records = try modelContext.fetch(FetchDescriptor<LibrarySongRecord>())
+        return LibraryResourceReferences(
+            audioFilenames: Set(records.map(\.managedAudioFilename)),
+            artworkFilenames: Set(records.compactMap(\.managedArtworkFilename))
+        )
+    }
+
     func duplicateCandidates(
         matching fingerprint: ContentFingerprint
     ) async throws -> [LibraryDuplicateCandidate] {

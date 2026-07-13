@@ -22,7 +22,8 @@ The application still presents the initial SwiftUI scaffold, and now includes th
 - `Item` contains only a timestamp.
 - The Library domain defines stable song identity, normalized song values, content fingerprints, resource availability, duplicate candidates, and deterministic localized sorting.
 - `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`. SwiftData records and `ModelContext` do not cross that boundary.
-- Managed resource resolution is an injected boundary. No managed file store, audio import, library UI, metadata extraction, playback, queue, background audio, or system media-control functionality exists yet.
+- `ManagedMediaStore` is an actor that owns versioned app-managed Audio, Artwork, and Staging directories. It provides staging locations, same-volume moves into identity-derived final filenames, complete byte comparison, availability resolution, explicit cleanup, and reconciliation of abandoned or unreferenced files.
+- The repository exposes the active managed filenames needed for reconciliation without exposing SwiftData records. No audio import coordination, library UI, metadata extraction, playback, queue, background audio, or system media-control functionality exists yet.
 
 ### Current runtime flow
 
@@ -44,6 +45,12 @@ SwiftData
 LibraryRepository
   -> maps LibrarySongRecord to Sendable Library domain values
   -> derives availability through LibraryResourceResolving
+  -> reports active audio and artwork filenames for reconciliation
+
+ManagedMediaStore
+  -> owns ManagedLibrary/v1 Audio, Artwork, and Staging directories
+  -> resolves only complete regular managed resources
+  -> removes abandoned staging work and unreferenced final resources
 ```
 
 ### Current source map
@@ -55,14 +62,15 @@ Resona/
 ├── Item.swift                     Retained scaffold model and V0 schema
 ├── Library/
 │   ├── Domain/                    Sendable song, identity, availability, and sorting values
-│   └── Persistence/               V1 record, migration plan, repository, and resource boundary
+│   ├── Persistence/               V1 record, migration plan, repository, and resource boundary
+│   └── Storage/                   Managed resource staging, commit, cleanup, and reconciliation
 └── Assets.xcassets                App icons, accent color, and visual assets
 
 ResonaTests/                       Migration, repository, sorting, and scaffold unit tests
 ResonaUITests/                     UI-test target
 ```
 
-`Library/Domain` and `Library/Persistence` are established source boundaries inside the application target, not separate Swift packages. Import, managed storage, and Library presentation layers remain planned.
+`Library/Domain`, `Library/Persistence`, and `Library/Storage` are established source boundaries inside the application target, not separate Swift packages. Import coordination and Library presentation layers remain planned.
 
 ## Target architectural boundaries
 
@@ -144,6 +152,8 @@ These boundaries are invariants; the exact types, folder layout, and use of prot
 The existing `Item` model remains scaffold data, not a music-library model. It is retained in schema V1 so the first library migration is additive and non-destructive. Removing it requires a separately approved migration decision.
 
 `LibrarySongRecord` is the V1 persisted music-library model. `SwiftDataLibraryRepository` owns its `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth.
+
+`ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's active filename snapshot and removes abandoned staging work plus unreferenced final resources; it never treats file presence as a persisted library record.
 
 ## Platform integrations
 

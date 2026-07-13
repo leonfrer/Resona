@@ -261,7 +261,7 @@ Use debug-only launch configuration and dependency injection for seeded UI state
 - Add repository and sorting tests.
 - Exit criterion: current scaffold store opens without data deletion and song records round-trip through the repository.
 
-### 2. Managed storage and reconciliation
+### 2. Managed storage and reconciliation — Completed
 
 - Add managed directory creation, staging, atomic commit, byte comparison, availability, cleanup, and reconciliation.
 - Add temporary-directory tests for every cleanup boundary.
