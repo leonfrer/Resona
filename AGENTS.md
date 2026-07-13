@@ -24,6 +24,7 @@ Start with `docs/README.md`, then read only the documents mapped to the task. Do
 | Bug fix | The owning spec, the relevant section of `docs/testing.md`, and affected code/tests |
 | Test-only change | `docs/testing.md` |
 | CI, release, or delivery work | `docs/release-process.md` and `docs/delivery-checklist.md` |
+| Branches, commits, pushes, or GitHub pull requests | `docs/engineering-guidelines.md`, especially its Git workflow sections |
 | Execution planning | The owning spec, relevant architecture sections, and `docs/execution-plans/README.md` |
 | Documentation-only change | `docs/README.md` and the documents being edited |
 
