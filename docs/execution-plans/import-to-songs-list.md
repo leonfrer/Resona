@@ -267,7 +267,7 @@ Use debug-only launch configuration and dependency injection for seeded UI state
 - Add temporary-directory tests for every cleanup boundary.
 - Exit criterion: interruption at each simulated boundary converges without a playable partial record or untracked partial file.
 
-### 3. Validation, metadata, and import coordination
+### 3. Validation, metadata, and import coordination — Completed
 
 - Add CryptoKit fingerprinting, Apple-framework validation, metadata normalization, typed results, sequential multi-file orchestration, cancellation, retry, duplicate handling, and unavailable restoration.
 - Add media fixtures and unit/integration coverage.

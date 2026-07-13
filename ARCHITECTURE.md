@@ -23,7 +23,11 @@ The application still presents the initial SwiftUI scaffold, and now includes th
 - The Library domain defines stable song identity, normalized song values, content fingerprints, resource availability, duplicate candidates, and deterministic localized sorting.
 - `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`. SwiftData records and `ModelContext` do not cross that boundary.
 - `ManagedMediaStore` is an actor that owns versioned app-managed Audio, Artwork, and Staging directories. It provides staging locations, same-volume moves into identity-derived final filenames, complete byte comparison, availability resolution, explicit cleanup, and reconciliation of abandoned or unreferenced files.
-- The repository exposes the active managed filenames needed for reconciliation without exposing SwiftData records. No audio import coordination, library UI, metadata extraction, playback, queue, background audio, or system media-control functionality exists yet.
+- The Library import boundary now includes complete-file SHA-256 fingerprinting, security-scoped and coordinated source reads, content-based container and codec validation, canonical metadata and artwork normalization, and typed per-file outcomes.
+- `AudioImportService` is an actor that serializes one import operation, reconciles managed storage before work, processes selected files sequentially, cooperatively cancels unfinished files, reports progress through an async stream, and supports one-file retry.
+- Import coordination confirms available duplicates with a complete byte comparison, restores unavailable matching records without changing identity, and removes newly committed resources when persistence fails.
+- The repository exposes the active managed filenames needed for reconciliation without exposing SwiftData records.
+- The import service is not yet composed into `ResonaApp`; file selection, import-session presentation, and the Songs List remain the next implementation stage. No library UI, playback, queue, background audio, or system media-control functionality exists yet.
 
 ### Current runtime flow
 
@@ -51,6 +55,14 @@ ManagedMediaStore
   -> owns ManagedLibrary/v1 Audio, Artwork, and Staging directories
   -> resolves only complete regular managed resources
   -> removes abandoned staging work and unreferenced final resources
+
+AudioImportService (implemented, not yet installed by ResonaApp)
+  -> reconciles repository references with managed storage
+  -> coordinates and fingerprints external source reads
+  -> validates staged audio and normalizes metadata
+  -> confirms duplicates or restores unavailable identities
+  -> commits managed resources before repository persistence
+  -> streams deterministic progress and typed per-file results
 ```
 
 ### Current source map
@@ -62,15 +74,17 @@ Resona/
 ├── Item.swift                     Retained scaffold model and V0 schema
 ├── Library/
 │   ├── Domain/                    Sendable song, identity, availability, and sorting values
+│   ├── Import/                    Source access, fingerprinting, typed results, and import coordination
+│   ├── Metadata/                  AVFoundation validation/reading and canonical normalization
 │   ├── Persistence/               V1 record, migration plan, repository, and resource boundary
 │   └── Storage/                   Managed resource staging, commit, cleanup, and reconciliation
 └── Assets.xcassets                App icons, accent color, and visual assets
 
-ResonaTests/                       Migration, repository, sorting, and scaffold unit tests
+ResonaTests/                       Persistence, storage, import, media-adapter, and scaffold tests
 ResonaUITests/                     UI-test target
 ```
 
-`Library/Domain`, `Library/Persistence`, and `Library/Storage` are established source boundaries inside the application target, not separate Swift packages. Import coordination and Library presentation layers remain planned.
+The Library folders are established source boundaries inside the application target, not separate Swift packages. The import implementation is present behind protocols but is not reachable from the scaffold UI until app composition and Library presentation are added.
 
 ## Target architectural boundaries
 
@@ -104,7 +118,7 @@ The Library boundary owns imported media and the user's browsable collection:
 - Metadata reads and normalizes embedded metadata and artwork.
 - Persistence stores library records and restoration data.
 
-External files and metadata are untrusted boundary inputs. They must be validated before becoming domain data. The initial library schema and non-destructive migration chain are established; later schema changes must extend that chain deliberately.
+External files and metadata are untrusted boundary inputs. The implemented import boundary copies coordinated source bytes into staging while calculating a complete SHA-256 fingerprint, validates supported container and codec combinations with Apple media frameworks, and normalizes optional metadata before committing domain data. The initial library schema and non-destructive migration chain are established; later schema changes must extend that chain deliberately.
 
 ### Playback
 
@@ -155,6 +169,8 @@ The existing `Item` model remains scaffold data, not a music-library model. It i
 
 `ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's active filename snapshot and removes abandoned staging work plus unreferenced final resources; it never treats file presence as a persisted library record.
 
+`AudioImportService` owns the lifetime and cancellation of one active import task. It publishes immutable progress and terminal per-file outcomes through an async stream; the presentation owner that will consume those events remains part of the next stage.
+
 ## Platform integrations
 
 Planned platform integrations belong to these boundaries:
@@ -163,8 +179,8 @@ Planned platform integrations belong to these boundaries:
 | --- | --- |
 | SwiftUI | Presentation |
 | SwiftData | Library persistence |
-| File importer and security-scoped resources | Library import |
-| AVFoundation | Playback and metadata, behind their respective interfaces |
+| File importer and security-scoped resources | Library import; coordinated security-scoped reading is implemented, picker presentation is planned |
+| AVFoundation | Playback and metadata; import validation and metadata adapters are implemented behind Library interfaces |
 | MediaPlayer and remote commands | Playback |
 | Background audio capability | Playback and app composition |
 
