@@ -2,6 +2,8 @@
 
 Product specifications are the source of truth for user-visible behavior and acceptance criteria. They describe what Resona should do without prescribing implementation details owned by `ARCHITECTURE.md` or an execution plan.
 
+[Quality attributes](quality-attributes.md) apply across the dependency chain and define the release qualification envelope, responsiveness budgets, and storage expectations.
+
 ## Product dependency order
 
 The specifications are ordered by dependency rather than by screen or user journey:
@@ -29,12 +31,13 @@ This dependency order does not require completing every library feature before i
 | [Music library](music-library.md) | Active | Songs List and playback-selection subsets verified; Library Management deferred |
 | [Basic playback](basic-playback.md) | Implemented | Runtime, Audio background mode, automated suites, and physical background/lock behavior verified |
 | [Playback integration](playback.md) | Proposed | Not started |
+| [Quality attributes](quality-attributes.md) | Active | Initial performance and storage targets defined; release evidence pending |
 
 ## Implementation readiness
 
 The active specifications approve the remaining Foundation and Music Library work. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
 
-The current completed technical plans are [Import to Songs List Execution Plan](../execution-plans/import-to-songs-list.md) and [Basic Playback Execution Plan](../execution-plans/basic-playback.md).
+The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The next implementation-ready plan is [Library Management Execution Plan](../execution-plans/library-management.md).
 
 Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration remains Proposed; system Now Playing presentation, remote commands, queues, restoration, and broader interruption or route behavior owned by it are not part of Basic Playback and must not be claimed as implemented until its remaining decisions are resolved and it becomes Active.
 
@@ -49,14 +52,18 @@ Basic Playback is implemented, including its explicitly approved Audio backgroun
 
 Each slice must leave the app in a coherent, testable state. Later slices must not be treated as prerequisites for validating an earlier one unless a specification says so explicitly.
 
-## Resolved cross-feature decisions
+## Cross-feature decision ownership
 
-- **Supported audio:** The first release accepts validated, unprotected MP3, AAC or Apple Lossless in M4A/MP4 audio containers, and supported PCM audio in WAV or AIFF containers. Extensions alone do not establish validity.
-- **Duplicate import:** Exact byte-identical content is skipped and reported as already imported when the existing managed resource is available. If the matching song is unavailable, re-import restores its managed resource while preserving its stable identity. Matching filenames or display metadata do not make different files duplicates.
-- **Natural end:** Without a following queue item, playback stops at the end and retains the current song; the next Play restarts it from the beginning. With a following queue item, playback advances according to the queue and repeat policy.
-- **Removal during playback:** Removing the current song stops playback and clears it from the current state and queue before deleting library resources. Removing another queued song removes all of its queue occurrences.
+This table locates each complete rule without restating it:
 
-The owning specifications contain the complete behavior and acceptance criteria. This summary exists to make decisions that cross feature boundaries easy to discover.
+| Decision | Authoritative specification |
+| --- | --- |
+| Supported formats, canonical metadata, and durable song identity | [Library foundation](library-foundation.md) |
+| Duplicate import and unavailable-song restoration | [Local audio import](local-audio-import.md) |
+| Song removal, including interaction with the current Basic Playback item | [Music library](music-library.md) |
+| Single-song natural end and replay | [Basic playback](basic-playback.md) |
+| Queue, repeat, shuffle, system controls, interruptions, routes, and restoration | [Playback integration](playback.md); unresolved while Proposed |
+| Performance, capacity, and storage budgets | [Quality attributes](quality-attributes.md) |
 
 ## Status definitions
 
@@ -71,3 +78,5 @@ The owning specifications contain the complete behavior and acceptance criteria.
 - Update a specification when user-visible behavior or acceptance criteria change.
 - Update the implementation status only after verifying the documented acceptance criteria.
 - Keep implementation steps and progress in execution plans rather than product specifications.
+- Keep algorithms, schemas, framework choices, concrete types, and file layouts out of product specifications.
+- State a complete behavior in one owning specification and link to it elsewhere.
