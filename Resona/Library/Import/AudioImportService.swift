@@ -35,7 +35,9 @@ actor AudioImportService {
         self.makeUUID = makeUUID
     }
 
-    func importFiles(at sourceURLs: [URL]) throws -> AsyncStream<ImportEvent> {
+    func importFiles(
+        at sourceURLs: [URL]
+    ) async throws -> AsyncStream<ImportEvent> {
         guard activeTask == nil else {
             throw AudioImportServiceError.operationInProgress
         }
@@ -56,12 +58,17 @@ actor AudioImportService {
         return stream
     }
 
-    func retryFile(at sourceURL: URL) throws -> AsyncStream<ImportEvent> {
-        try importFiles(at: [sourceURL])
+    func retryFile(at sourceURL: URL) async throws -> AsyncStream<ImportEvent> {
+        try await importFiles(at: [sourceURL])
     }
 
-    func cancelActiveImport() {
+    func cancelActiveImport() async {
         activeTask?.cancel()
+    }
+
+    func reconcileLibrary() async throws {
+        let references = try await repository.resourceReferences()
+        try await mediaStore.reconcile(references: references)
     }
 
     private func runImport(

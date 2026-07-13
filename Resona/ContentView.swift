@@ -1,61 +1,36 @@
-//
-//  ContentView.swift
-//  Resona
-//
-//  Created by Leon on 7/11/26.
-//
-
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    let initialImportSession: ImportSessionModel?
+
+    init(initialImportSession: ImportSessionModel? = nil) {
+        self.initialImportSession = initialImportSession
+    }
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+        NavigationStack {
+            LibraryView(initialImportSession: initialImportSession)
         }
     }
 }
 
 #Preview {
+    let store = LibraryStore(
+        repository: ContentViewPreviewRepository(),
+        initialState: .loaded([])
+    )
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .environment(store)
+}
+
+private actor ContentViewPreviewRepository: LibraryRepository {
+    func fetchSongs(locale: Locale) -> [LibrarySong] { [] }
+    func resourceReferences() -> LibraryResourceReferences {
+        LibraryResourceReferences()
+    }
+    func duplicateCandidates(
+        matching fingerprint: ContentFingerprint
+    ) -> [LibraryDuplicateCandidate] { [] }
+    func insert(_ draft: LibrarySongDraft) {}
+    func restore(_ draft: LibrarySongDraft) {}
 }

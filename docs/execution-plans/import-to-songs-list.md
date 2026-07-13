@@ -273,11 +273,13 @@ Use debug-only launch configuration and dependency injection for seeded UI state
 - Add media fixtures and unit/integration coverage.
 - Exit criterion: every Local Audio Import acceptance case has deterministic automated coverage where technically practical.
 
-### 4. Library and import UI
+### 4. Library and import UI — Implemented
 
 - Replace scaffold item presentation with LibraryView, empty state, Songs List, file importer, ImportSheet, SongRow, localization-ready strings, accessibility, and previews.
 - Keep playback and removal affordances out of scope.
 - Exit criterion: empty-to-import-to-persistent-list works on iPhone and iPad without placeholder destinations.
+
+The implementation and automated iPhone and iPad Simulator coverage are complete. Manual Files picker handoff, real-file import, and interactive iPad visual inspection remain delivery verification steps because they are outside the reliable app UI-test boundary.
 
 ### 5. Delivery verification and documentation
 

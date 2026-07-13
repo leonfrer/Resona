@@ -24,9 +24,9 @@ This dependency order does not require completing every library feature before i
 | Specification | Status | Implementation |
 | --- | --- | --- |
 | [Experience foundation](experience-foundation.md) | Active | Not started |
-| [Library foundation](library-foundation.md) | Active | In progress |
-| [Local audio import](local-audio-import.md) | Active | In progress |
-| [Music library](music-library.md) | Active | Not started |
+| [Library foundation](library-foundation.md) | Active | Import to Songs List foundation implemented; removal deferred |
+| [Local audio import](local-audio-import.md) | Active | Import to Songs List stage implemented |
+| [Music library](music-library.md) | Active | Songs List implemented; Library Management not started |
 | [Basic playback](basic-playback.md) | Proposed | Not started |
 | [Playback integration](playback.md) | Proposed | Not started |
 

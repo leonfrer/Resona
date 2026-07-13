@@ -10,15 +10,13 @@ The product direction is described in `README.md`. A feature listed there is pla
 
 ## Current implementation
 
-The repository is in its foundation stage and currently contains a single iOS application target, a unit-test target, and a UI-test target.
-
-The application still presents the initial SwiftUI scaffold, and now includes the first implemented Library persistence foundation:
+The repository now contains the first Import to Songs List production slice in a single iOS application target, a unit-test target, and a UI-test target:
 
 - `ResonaApp` is the composition root.
 - It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
+- It constructs the managed-media store, Library repository, audio-import service, and shared `LibraryStore`, then installs presentation dependencies in the SwiftUI environment.
 - Schema V0 represents the original `Item`-only store. Schema V1 adds `LibrarySongRecord` while retaining `Item`, with a lightweight V0-to-V1 migration.
-- It injects that container into `ContentView` through the SwiftUI environment.
-- `ContentView` queries, inserts, and deletes `Item` records directly through SwiftData.
+- `ContentView` hosts one `NavigationStack` rooted at `LibraryView`; it no longer presents or mutates scaffold `Item` values.
 - `Item` contains only a timestamp.
 - The Library domain defines stable song identity, normalized song values, content fingerprints, resource availability, duplicate candidates, and deterministic localized sorting.
 - `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`. SwiftData records and `ModelContext` do not cross that boundary.
@@ -27,20 +25,33 @@ The application still presents the initial SwiftUI scaffold, and now includes th
 - `AudioImportService` is an actor that serializes one import operation, reconciles managed storage before work, processes selected files sequentially, cooperatively cancels unfinished files, reports progress through an async stream, and supports one-file retry.
 - Import coordination confirms available duplicates with a complete byte comparison, restores unavailable matching records without changing identity, and removes newly committed resources when persistence fails.
 - The repository exposes the active managed filenames needed for reconciliation without exposing SwiftData records.
-- The import service is not yet composed into `ResonaApp`; file selection, import-session presentation, and the Songs List remain the next implementation stage. No library UI, playback, queue, background audio, or system media-control functionality exists yet.
+- `LibraryStore` owns library loading state and publishes immutable, deterministically sorted song snapshots to presentation. Its first load runs launch reconciliation before fetching songs.
+- `LibraryView` presents the Songs List, offline-copy empty state, loading and recovery states, toolbar import action, and the system multi-file importer.
+- `ImportSessionModel` consumes import events and owns one operation's progress, results, cancellation, Choose Files recovery, and one-file retry. `ImportSheet` remains presented while active and owns its actions and dismissal.
+- `SongRow` displays artwork or a standard placeholder, normalized title, artist fallback, optional duration, and a labeled unavailable state without exposing playback or removal affordances.
+- No playback, queue, removal, background audio, or system media-control functionality exists yet.
 
 ### Current runtime flow
 
 ```text
 ResonaApp
-  -> creates versioned ModelContainer(Item, LibrarySongRecord)
+  -> creates versioned ModelContainer, ManagedMediaStore,
+     SwiftDataLibraryRepository, AudioImportService, and LibraryStore
   -> migrates an existing Item-only store without deleting Item data
-  -> presents ContentView
-  -> injects ModelContext through the SwiftUI environment
+  -> installs the model container and Library presentation dependencies
 
 ContentView
-  -> reads Item values with @Query
-  -> inserts and deletes Item values with ModelContext
+  -> hosts NavigationStack -> LibraryView
+
+LibraryView
+  -> starts the initial LibraryStore load
+  -> renders empty, failure, or deterministic Songs List state
+  -> presents fileImporter and one item-driven ImportSheet
+
+ImportSessionModel
+  -> consumes AudioImportService events
+  -> publishes progress, mixed per-file results, cancellation, and retry state
+  -> refreshes LibraryStore after committed results
 
 SwiftData
   -> persists Item values on device
@@ -56,7 +67,7 @@ ManagedMediaStore
   -> resolves only complete regular managed resources
   -> removes abandoned staging work and unreferenced final resources
 
-AudioImportService (implemented, not yet installed by ResonaApp)
+AudioImportService
   -> reconciles repository references with managed storage
   -> coordinates and fingerprints external source reads
   -> validates staged audio and normalizes metadata
@@ -70,13 +81,14 @@ AudioImportService (implemented, not yet installed by ResonaApp)
 ```text
 Resona/
 ├── ResonaApp.swift                Application entry point and container composition
-├── ContentView.swift              Current scaffold user interface
+├── ContentView.swift              Application navigation root
 ├── Item.swift                     Retained scaffold model and V0 schema
 ├── Library/
 │   ├── Domain/                    Sendable song, identity, availability, and sorting values
 │   ├── Import/                    Source access, fingerprinting, typed results, and import coordination
 │   ├── Metadata/                  AVFoundation validation/reading and canonical normalization
 │   ├── Persistence/               V1 record, migration plan, repository, and resource boundary
+│   ├── Presentation/              Library state, Songs List, import sheet, and song rows
 │   └── Storage/                   Managed resource staging, commit, cleanup, and reconciliation
 └── Assets.xcassets                App icons, accent color, and visual assets
 
@@ -84,7 +96,7 @@ ResonaTests/                       Persistence, storage, import, media-adapter, 
 ResonaUITests/                     UI-test target
 ```
 
-The Library folders are established source boundaries inside the application target, not separate Swift packages. The import implementation is present behind protocols but is not reachable from the scaffold UI until app composition and Library presentation are added.
+The Library folders are established source boundaries inside the application target, not separate Swift packages. Presentation reaches import and persistence only through Library-facing interfaces and immutable domain values.
 
 ## Target architectural boundaries
 
@@ -169,7 +181,9 @@ The existing `Item` model remains scaffold data, not a music-library model. It i
 
 `ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's active filename snapshot and removes abandoned staging work plus unreferenced final resources; it never treats file presence as a persisted library record.
 
-`AudioImportService` owns the lifetime and cancellation of one active import task. It publishes immutable progress and terminal per-file outcomes through an async stream; the presentation owner that will consume those events remains part of the next stage.
+`AudioImportService` owns the lifetime and cancellation of one active import task. It publishes immutable progress and terminal per-file outcomes through an async stream. `ImportSessionModel` consumes those events on the main actor and refreshes `LibraryStore` after committed results.
+
+`LibraryStore` owns the shared presentation snapshot and load state. `ImportSessionModel` owns only one sheet operation and never becomes a second durable source of library truth.
 
 ## Platform integrations
 
@@ -179,7 +193,7 @@ Planned platform integrations belong to these boundaries:
 | --- | --- |
 | SwiftUI | Presentation |
 | SwiftData | Library persistence |
-| File importer and security-scoped resources | Library import; coordinated security-scoped reading is implemented, picker presentation is planned |
+| File importer and security-scoped resources | Library import; system multi-file selection and coordinated security-scoped reading are implemented |
 | AVFoundation | Playback and metadata; import validation and metadata adapters are implemented behind Library interfaces |
 | MediaPlayer and remote commands | Playback |
 | Background audio capability | Playback and app composition |
@@ -193,7 +207,6 @@ The repository does not yet establish:
 - The concrete playback engine and its public interface
 - Queue persistence and restoration semantics
 - Whether existing source-folder boundaries should later become Swift packages
-- App-level dependency-injection mechanics for Library services beyond the shared `ModelContainer`
 
 Resolve these decisions when the corresponding product specification is written. Record decisions in this document when they change the system map; do not silently infer them from planned feature names.
 
