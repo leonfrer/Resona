@@ -23,10 +23,10 @@ This dependency order does not require completing every library feature before i
 
 | Specification | Status | Implementation |
 | --- | --- | --- |
-| [Experience foundation](experience-foundation.md) | Active | Not started |
-| [Library foundation](library-foundation.md) | Active | Import to Songs List foundation implemented; removal deferred |
-| [Local audio import](local-audio-import.md) | Active | Import to Songs List stage implemented |
-| [Music library](music-library.md) | Active | Songs List implemented; Library Management not started |
+| [Experience foundation](experience-foundation.md) | Active | Import and library feedback subset verified; playback feedback deferred |
+| [Library foundation](library-foundation.md) | Active | Identity, storage, metadata, and consistency subset verified; removal deferred |
+| [Local audio import](local-audio-import.md) | Active | Import to Songs List slice implemented and verified |
+| [Music library](music-library.md) | Active | Songs List subset verified; playback selection and Library Management deferred |
 | [Basic playback](basic-playback.md) | Proposed | Not started |
 | [Playback integration](playback.md) | Proposed | Not started |
 

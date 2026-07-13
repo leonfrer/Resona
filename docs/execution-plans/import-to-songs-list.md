@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress
+Completed
 
 ## Outcome
 
@@ -273,21 +273,35 @@ Use debug-only launch configuration and dependency injection for seeded UI state
 - Add media fixtures and unit/integration coverage.
 - Exit criterion: every Local Audio Import acceptance case has deterministic automated coverage where technically practical.
 
-### 4. Library and import UI — Implemented
+### 4. Library and import UI — Completed
 
 - Replace scaffold item presentation with LibraryView, empty state, Songs List, file importer, ImportSheet, SongRow, localization-ready strings, accessibility, and previews.
 - Keep playback and removal affordances out of scope.
 - Exit criterion: empty-to-import-to-persistent-list works on iPhone and iPad without placeholder destinations.
 
-The implementation and automated iPhone and iPad Simulator coverage are complete. Manual Files picker handoff, real-file import, and interactive iPad visual inspection remain delivery verification steps because they are outside the reliable app UI-test boundary.
+The implementation and automated iPhone and iPad Simulator coverage are complete. The Files picker handoff, real-file import, and interactive iPad visual inspection were completed during delivery verification.
 
-### 5. Delivery verification and documentation
+### 5. Delivery verification and documentation — Completed
 
 - Add critical UI tests and perform interactive accessibility and real-file checks.
 - Run the full required validation.
 - Update `ARCHITECTURE.md` from scaffold state to the implemented boundaries, source map, runtime flow, state ownership, schema version, and managed storage.
 - Change implementation statuses only for acceptance criteria actually verified; keep Basic Playback and Playback Integration Proposed.
 - Exit criterion: the affected target builds without new warnings, required tests pass, documentation matches runtime, and no generated build artifacts are tracked.
+
+## Delivery verification
+
+Delivery verification completed on 2026-07-13 with Xcode 26.6 and the iOS 26.5 Simulator runtime.
+
+- `./scripts/check-all.sh` passed on an iPhone 17 Pro Simulator. The unit and integration suites passed, followed by 8 serial UI and launch-configuration tests with no failures.
+- `DESTINATION='platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=latest' ./scripts/test-ui.sh` passed with 8 UI and launch-configuration tests and no failures.
+- UI tests now run serially on the selected destination. This avoids Xcode creating multiple cloned Simulators for the launch-configuration matrix and removes cross-runner interference from the delivery suite.
+- Interactive iPhone and iPad checks covered the empty state, populated Songs List, labeled unavailable state, import progress, active cancellation, mixed result counts, retry, and Choose Files recovery actions.
+- A real Files handoff on iPhone verified picker cancellation, one supported MP3 succeeding alongside one unsupported FLAC failure, byte-identical duplicate reporting without a second row, relaunch persistence, and continued managed-copy availability after the source file was removed.
+- Dark Mode, the accessibility XXXL content-size category, portrait and landscape launch configurations, accessibility labels and hierarchy order, and non-color unavailable feedback were inspected. The primary Choose Files action remained hittable at the accessibility size.
+- `ARCHITECTURE.md` was reviewed against the runtime composition, V1 schema, state ownership, import flow, and managed storage; its current system map already matches the delivered implementation.
+- Xcode emitted Simulator/debugger and skipped-AppIntents-metadata diagnostics during testing. No new application source warning was introduced.
+- Basic Playback, Playback Integration, row selection, and library removal remain outside this completed slice.
 
 ## Definition of ready for coding
 

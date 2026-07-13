@@ -12,3 +12,4 @@
 - Use in-memory SwiftData containers by default in persistence tests.
 - Use an isolated temporary on-disk container only when the behavior under test requires destroying and recreating the container, such as relaunch persistence or schema migration. Remove the temporary store after the test.
 - Keep tests deterministic and independent of execution order.
+- Run UI tests serially on the selected Simulator. `scripts/test-ui.sh` disables parallel testing so Xcode does not create competing cloned Simulators for the launch-configuration matrix.

@@ -59,12 +59,21 @@ final class ResonaUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Retry Me.wav"].exists)
         XCTAssertTrue(app.buttons["import.retry.2"].exists)
         XCTAssertTrue(app.buttons["import.chooseFiles.2"].exists)
-        app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Cancelled.aiff"].waitForExistence(timeout: 5))
+        let cancelledFile = app.staticTexts["Cancelled.aiff"]
+        for _ in 0..<3 where !cancelledFile.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(cancelledFile.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancelledFile.isHittable)
         XCTAssertTrue(app.buttons["import.chooseFiles.3"].exists)
 
-        app.swipeDown()
-        app.buttons["import.retry.2"].tap()
+        let retry = app.buttons["import.retry.2"]
+        for _ in 0..<3 where !retry.isHittable {
+            app.swipeDown()
+        }
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        XCTAssertTrue(retry.isHittable)
+        retry.tap()
         XCTAssertTrue(app.staticTexts["Imported into your library."].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["import.done"].exists)
     }
