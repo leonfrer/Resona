@@ -2,11 +2,11 @@
 
 ## Status
 
-Proposed
+Active
 
 ## User outcome
 
-Users can start an available imported song and reliably control foreground playback in Resona.
+Users can start an available imported song, reliably control it in Resona, and continue already-started playback when the app moves to the background or the device locks.
 
 ## Depends on
 
@@ -53,10 +53,22 @@ The library's current-song affordance presents the detailed player in a sheet wi
 - Play, pause, and seek commands are safe when no valid current song exists and must not create a false playing state.
 - Playback failures must not modify or invalidate the library song.
 - A missing, inaccessible, corrupted, or unsupported managed resource produces an actionable failure.
+- A missing or inaccessible managed resource reports a localized equivalent of “Song Unavailable” and offers Re-import. It does not remove or otherwise modify the library song.
+- A managed resource that can be opened but is corrupted, unsupported, or cannot be decoded reports a localized equivalent of “Song Can’t Be Played” and offers Re-import.
+- A transient player or audio-session startup failure reports a localized equivalent of “Playback Couldn’t Start” and offers Try Again.
+- If the current resource becomes unavailable or playback fails after starting, Resona stops playback, immediately stops claiming that audio is playing, retains the current song, and offers Re-import for a resource failure or Try Again for a transient playback failure.
 - Relaunching the app does not automatically begin audible playback in this stage.
 - Moving Resona to the background or locking the device does not pause valid ongoing playback.
 - At the natural end of the current song, playback stops, the current song remains selected, and its position rests at the end. Pressing Play starts that song again from the beginning.
 - Minimum background continuation must not be claimed as implemented until the required background-audio capability change is explicitly approved and verified.
+
+## Seeking behavior
+
+- Seeking is unavailable while playback is preparing or the playable duration is unknown. The player communicates the disabled state without presenting it as an error.
+- Once a finite positive duration is known, the user can seek within the current song.
+- A seek target is clamped to the inclusive range from zero through the known duration.
+- Seeking to the natural end produces the same stopped-at-end state as natural completion; the next Play restarts the song from the beginning.
+- A seek request that becomes stale because the current song was replaced is ignored and must not affect the replacement song.
 
 ## Failure cases
 
@@ -73,16 +85,19 @@ The library's current-song affordance presents the detailed player in a sheet wi
 - Selecting a different available song replaces the current song and starts it from the beginning.
 - Play, pause, and seek keep visible state consistent with audible playback.
 - A missing or unreadable managed resource does not change library data or leave playback claiming success.
+- Missing, inaccessible, corrupted, and unsupported resource failures offer Re-import; transient startup and playback failures offer Try Again.
+- Seeking is disabled while preparing or while duration is unknown, and an enabled seek is clamped to the known playable range.
 - Repeated or temporarily invalid commands do not crash and leave the authoritative playback state consistent.
 - Terminating and relaunching Resona does not unexpectedly start audible playback.
 - Ongoing playback continues when the app enters the background or the device locks.
 - Reaching the natural end stops playback, retains the current song at its end position, and makes the next Play restart from the beginning.
 - Start, replacement, play, pause, seek, and failure behavior have deterministic automated coverage where technically practical.
 
-## Decisions required before Active
+## Resolved decisions
 
-- Define the actionable user message and recovery option for each resource or playback failure category.
-- Define seek behavior while duration is unknown or playback is still preparing.
+- Resource failures use Song Unavailable or Song Can’t Be Played feedback and offer Re-import; transient startup and playback failures offer Try Again.
+- Seeking remains disabled while preparing or while duration is unknown, then clamps requests to the known playable range.
+- Basic Playback owns minimum continuation of already-started single-song playback while the app is backgrounded or the device is locked. Queue behavior, system media controls, interruption and route-change recovery, and playback restoration remain owned by Playback Integration.
 
 ## Related documents
 
