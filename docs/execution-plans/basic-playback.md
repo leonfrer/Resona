@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready for implementation. Enabling the Background Modes audio capability remains an explicit approval gate before that project-setting change is made.
+Complete. The Basic Playback runtime, approved Audio background mode, automated suites, and physical-device background and lock-screen acceptance checks are implemented and verified.
 
 ## Outcome
 
@@ -370,6 +370,31 @@ Use debug-only injected PlaybackStore dependencies and engine events. Production
 - Record completed commands, device coverage, warnings, and any unverified manual checks in this plan.
 - Exit criterion: required builds and tests pass, the documented Basic Playback behavior is verified, and current architecture documentation matches runtime composition.
 
+## Implementation record — 2026-07-13
+
+Completed:
+
+- Added the Playback domain, stable-ID Library provider, tagged `AVAudioPlayer` engine, audio-session controller, authoritative `PlaybackStore`, current-song bar, player sheet, and shared re-import presentation.
+- Added deterministic coverage for repository lookup, provider mapping, selection races, stale events, transport state, seeking, completion, typed recovery, interruption start, audio-session failures, presentation formatting, and the real engine adapter.
+- Added critical UI coverage for available and unavailable rows, select-to-play, presentation without transport side effects, pause, resume, typed recovery, and accessibility text sizing. Seek-to-end and restart remain deterministic `PlaybackStore` coverage rather than timing-sensitive UI automation.
+- Added the explicitly approved Background Modes Audio capability with only `audio` in `UIBackgroundModes` for Debug and Release; no entitlement file, deployment-target change, bundle-identifier change, or unrelated capability was added.
+- Kept preview-only support out of Release compilation and verified that both Debug and Release device builds compile successfully.
+- Updated `ARCHITECTURE.md` to reflect the implemented Playback boundary and configured background capability.
+
+Verified:
+
+- XcodeBuildMCP Debug builds succeeded without source warnings on iPhone 17 Pro and iPad Pro 11-inch (M5) Simulators running iOS 26.5.
+- XcodeBuildMCP unit suite: 57 passed, 0 failed.
+- XcodeBuildMCP UI suite, run serially: 8 passed, 0 failed.
+- Interactive semantic-tree and screenshot inspection confirmed the Library, independent CurrentSongBar targets, and Player sheet on both iPhone and iPad.
+- Physical iPhone 17 Pro Max running iOS 26.5.2: Debug and Release device builds passed; the signed products each contain exactly `UIBackgroundModes = [audio]`.
+- Physical iPhone 17 Pro Max running iOS 26.5.2: direct serial unit suite passed 57 tests with 0 failures (64 parameterized executions), and direct serial UI suite passed 8 tests with 0 failures (11 parameterized executions). These are the physical-device equivalents of `check.sh` and `check-all.sh`, whose scripts force unsigned Simulator testing.
+- Physical iPhone 17 Pro Max hands-on acceptance passed with a real imported song: playback continued on the Home Screen and while locked, foreground return synchronized the advanced position, paused playback remained silent in the background and while locked, and terminating then relaunching Resona remained silent.
+
+Additional non-blocking manual coverage:
+
+- Audible interactive playback across every supported fixture family, Dark Mode, Reduce Motion, and a hands-on VoiceOver session remain manual checks; automated state, accessibility identifier, and accessibility text-size coverage passes.
+
 ## Expected source map
 
 The exact split may tighten during implementation, but the intended ownership is:
@@ -398,8 +423,8 @@ Do not create separate Swift packages or shared abstractions for this slice. The
 
 ## Definition of ready for coding
 
-- Basic Playback is Active and its failure, seek, natural-end, and minimum background behavior is resolved.
+- Basic Playback was Active when coding began, and its failure, seek, natural-end, and minimum background behavior was resolved.
 - This plan fixes the initial engine choice, authoritative state owner, Library lookup boundary, session activation policy, stale-event protection, presentation ownership, and test layers.
 - No SwiftData schema change, migration, third-party dependency, deployment-target change, bundle-identifier change, or MediaPlayer integration is required.
-- The only capability change is the Audio background mode, and it remains blocked until explicitly approved.
+- The only capability change is the Audio background mode, which was explicitly approved before it was added.
 - Any discovery requiring queue persistence, automatic interruption recovery, new entitlements, destructive Library mutation, or behavior owned by Playback Integration must pause and update the owning specification or execution plan before implementation continues.

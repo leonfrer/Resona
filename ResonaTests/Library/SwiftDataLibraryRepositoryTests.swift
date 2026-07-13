@@ -72,6 +72,38 @@ struct SwiftDataLibraryRepositoryTests {
         #expect(songs[0].availability == .unavailable)
     }
 
+    @Test func resolvesOneSongByStableIdentityWithFreshResources() async throws {
+        let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
+        let audioURL = URL(fileURLWithPath: "/tmp/managed/fresh.m4a")
+        let artworkURL = URL(fileURLWithPath: "/tmp/managed/fresh.jpg")
+        let resolver = StubLibraryResourceResolver(
+            audioURLs: ["fresh.m4a": audioURL],
+            artworkURLs: ["fresh.jpg": artworkURL]
+        )
+        let repository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: resolver
+        )
+        let id = UUID()
+        try await repository.insert(
+            draft(
+                id: id,
+                digest: "fresh",
+                audioFilename: "fresh.m4a",
+                title: "Fresh Song",
+                artworkFilename: "fresh.jpg"
+            )
+        )
+
+        let song = try await repository.song(id: id)
+
+        #expect(song?.id == id)
+        #expect(song?.title == "Fresh Song")
+        #expect(song?.artworkURL == artworkURL)
+        #expect(song?.availability == .available(audioURL: audioURL))
+        #expect(try await repository.song(id: UUID()) == nil)
+    }
+
     @Test func reportsAllManagedResourceReferences() async throws {
         let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
         let repository = SwiftDataLibraryRepository(

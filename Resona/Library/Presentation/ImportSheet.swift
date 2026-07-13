@@ -7,6 +7,15 @@ struct ImportSheet: View {
     @State private var pickerFailure: ImportSheetPickerFailure?
 
     let session: ImportSessionModel
+    let onDismiss: @MainActor (UUID?) -> Void
+
+    init(
+        session: ImportSessionModel,
+        onDismiss: @escaping @MainActor (UUID?) -> Void = { _ in }
+    ) {
+        self.session = session
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         NavigationStack {
@@ -62,6 +71,9 @@ struct ImportSheet: View {
         }
         .task {
             await session.start()
+        }
+        .onDisappear {
+            onDismiss(session.recoverySongID)
         }
     }
 

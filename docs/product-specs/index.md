@@ -23,20 +23,20 @@ This dependency order does not require completing every library feature before i
 
 | Specification | Status | Implementation |
 | --- | --- | --- |
-| [Experience foundation](experience-foundation.md) | Active | Import and library feedback subset verified; playback feedback deferred |
+| [Experience foundation](experience-foundation.md) | Active | Import, library, and Basic Playback feedback subsets verified |
 | [Library foundation](library-foundation.md) | Active | Identity, storage, metadata, and consistency subset verified; removal deferred |
 | [Local audio import](local-audio-import.md) | Active | Import to Songs List slice implemented and verified |
-| [Music library](music-library.md) | Active | Songs List subset verified; playback selection and Library Management deferred |
-| [Basic playback](basic-playback.md) | Active | Not started |
+| [Music library](music-library.md) | Active | Songs List and playback-selection subsets verified; Library Management deferred |
+| [Basic playback](basic-playback.md) | Implemented | Runtime, Audio background mode, automated suites, and physical background/lock behavior verified |
 | [Playback integration](playback.md) | Proposed | Not started |
 
 ## Implementation readiness
 
-The active specifications approve implementation of the Foundations, Import to Songs List, and Basic Playback delivery slices. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
+The active specifications approve the remaining Foundation and Music Library work. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
 
-The current technical plans are [Import to Songs List Execution Plan](../execution-plans/import-to-songs-list.md) for the completed import scope and [Basic Playback Execution Plan](../execution-plans/basic-playback.md) for the next delivery slice.
+The current completed technical plans are [Import to Songs List Execution Plan](../execution-plans/import-to-songs-list.md) and [Basic Playback Execution Plan](../execution-plans/basic-playback.md).
 
-Basic Playback is Active and ready for implementation under its execution plan, subject to explicit approval before enabling the Audio background mode. Playback Integration remains Proposed; behavior owned only by it must not be included in the Basic Playback slice or claimed as complete until its remaining decisions are resolved and it becomes Active.
+Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration remains Proposed; system Now Playing presentation, remote commands, queues, restoration, and broader interruption or route behavior owned by it are not part of Basic Playback and must not be claimed as implemented until its remaining decisions are resolved and it becomes Active.
 
 ## Recommended delivery slices
 

@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(PlaybackStore.self) private var playbackStore
+
     let initialImportSession: ImportSessionModel?
 
     init(initialImportSession: ImportSessionModel? = nil) {
@@ -11,9 +14,15 @@ struct ContentView: View {
         NavigationStack {
             LibraryView(initialImportSession: initialImportSession)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                playbackStore.synchronizePosition()
+            }
+        }
     }
 }
 
+#if DEBUG
 #Preview {
     let store = LibraryStore(
         repository: ContentViewPreviewRepository(),
@@ -21,6 +30,7 @@ struct ContentView: View {
     )
     ContentView()
         .environment(store)
+        .environment(PlaybackStore.preview())
 }
 
 private actor ContentViewPreviewRepository: LibraryRepository {
@@ -34,3 +44,4 @@ private actor ContentViewPreviewRepository: LibraryRepository {
     func insert(_ draft: LibrarySongDraft) {}
     func restore(_ draft: LibrarySongDraft) {}
 }
+#endif

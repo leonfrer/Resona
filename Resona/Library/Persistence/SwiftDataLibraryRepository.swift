@@ -22,33 +22,17 @@ actor SwiftDataLibraryRepository: LibraryRepository {
         songs.reserveCapacity(records.count)
 
         for record in records {
-            let audioURL = await resourceResolver.audioURL(
-                for: record.managedAudioFilename
-            )
-            let artworkURL: URL?
-            if let managedArtworkFilename = record.managedArtworkFilename {
-                artworkURL = await resourceResolver.artworkURL(
-                    for: managedArtworkFilename
-                )
-            } else {
-                artworkURL = nil
-            }
-
-            songs.append(
-                LibrarySong(
-                    id: record.id,
-                    title: record.title,
-                    artist: record.artist,
-                    album: record.album,
-                    durationSeconds: record.durationSeconds,
-                    artworkURL: artworkURL,
-                    availability: audioURL.map(SongAvailability.available)
-                        ?? .unavailable
-                )
-            )
+            songs.append(await librarySong(from: record))
         }
 
         return LibrarySongSorting.sorted(songs, locale: locale)
+    }
+
+    func song(id: UUID) async throws -> LibrarySong? {
+        guard let record = try record(id: id) else {
+            return nil
+        }
+        return await librarySong(from: record)
     }
 
     func resourceReferences() throws -> LibraryResourceReferences {
@@ -118,6 +102,33 @@ actor SwiftDataLibraryRepository: LibraryRepository {
             predicate: #Predicate { $0.id == id }
         )
         return try modelContext.fetch(descriptor).first
+    }
+
+    private func librarySong(
+        from record: LibrarySongRecord
+    ) async -> LibrarySong {
+        let audioURL = await resourceResolver.audioURL(
+            for: record.managedAudioFilename
+        )
+        let artworkURL: URL?
+        if let managedArtworkFilename = record.managedArtworkFilename {
+            artworkURL = await resourceResolver.artworkURL(
+                for: managedArtworkFilename
+            )
+        } else {
+            artworkURL = nil
+        }
+
+        return LibrarySong(
+            id: record.id,
+            title: record.title,
+            artist: record.artist,
+            album: record.album,
+            durationSeconds: record.durationSeconds,
+            artworkURL: artworkURL,
+            availability: audioURL.map(SongAvailability.available)
+                ?? .unavailable
+        )
     }
 }
 
