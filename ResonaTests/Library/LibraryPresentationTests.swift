@@ -117,6 +117,7 @@ struct LibraryPresentationTests {
                 )
         )
         #expect(await repository.fetchCount == 3)
+        #expect(session.recoverySongID == songID)
     }
 
     @Test func retryReplacesOnlyTheAffectedFileResult() async {
@@ -151,6 +152,7 @@ struct LibraryPresentationTests {
         #expect(session.entries.map(\.result?.outcome) == [.imported(songID), .imported(songID)])
         #expect(session.summary.importedCount == 2)
         #expect(session.summary.failedCount == 0)
+        #expect(session.recoverySongID == songID)
         #expect(await importer.retriedURLs == [secondURL])
     }
 

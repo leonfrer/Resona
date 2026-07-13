@@ -10,43 +10,62 @@ The product direction is described in `README.md`. A feature listed there is pla
 
 ## Current implementation
 
-The repository now contains the first Import to Songs List production slice in a single iOS application target, a unit-test target, and a UI-test target:
+The repository now contains the Import to Songs List slice and the implemented Basic Playback runtime in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified:
 
 - `ResonaApp` is the composition root.
 - It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
-- It constructs the managed-media store, Library repository, audio-import service, and shared `LibraryStore`, then installs presentation dependencies in the SwiftUI environment.
+- It constructs the managed-media store, Library repository, audio-import service, playback item provider, AVFoundation playback adapters, shared `LibraryStore`, and application-lifetime `PlaybackStore`, then installs presentation dependencies in the SwiftUI environment.
 - Schema V0 represents the original `Item`-only store. Schema V1 adds `LibrarySongRecord` while retaining `Item`, with a lightweight V0-to-V1 migration.
 - `ContentView` hosts one `NavigationStack` rooted at `LibraryView`; it no longer presents or mutates scaffold `Item` values.
 - `Item` contains only a timestamp.
 - The Library domain defines stable song identity, normalized song values, content fingerprints, resource availability, duplicate candidates, and deterministic localized sorting.
-- `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`. SwiftData records and `ModelContext` do not cross that boundary.
+- `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`, including fresh stable-ID lookup for playback. SwiftData records and `ModelContext` do not cross that boundary.
 - `ManagedMediaStore` is an actor that owns versioned app-managed Audio, Artwork, and Staging directories. It provides staging locations, same-volume moves into identity-derived final filenames, complete byte comparison, availability resolution, explicit cleanup, and reconciliation of abandoned or unreferenced files.
 - The Library import boundary now includes complete-file SHA-256 fingerprinting, security-scoped and coordinated source reads, content-based container and codec validation, canonical metadata and artwork normalization, and typed per-file outcomes.
 - `AudioImportService` is an actor that serializes one import operation, reconciles managed storage before work, processes selected files sequentially, cooperatively cancels unfinished files, reports progress through an async stream, and supports one-file retry.
 - Import coordination confirms available duplicates with a complete byte comparison, restores unavailable matching records without changing identity, and removes newly committed resources when persistence fails.
 - The repository exposes the active managed filenames needed for reconciliation without exposing SwiftData records.
 - `LibraryStore` owns library loading state and publishes immutable, deterministically sorted song snapshots to presentation. Its first load runs launch reconciliation before fetching songs.
-- `LibraryView` presents the Songs List, offline-copy empty state, loading and recovery states, toolbar import action, and the system multi-file importer.
+- `LibraryView` presents the Songs List, offline-copy empty state, loading and recovery states, toolbar import action, reusable system multi-file importer, available-row playback actions, and the persistent current-song surface.
 - `ImportSessionModel` consumes import events and owns one operation's progress, results, cancellation, Choose Files recovery, and one-file retry. `ImportSheet` remains presented while active and owns its actions and dismissal.
-- `SongRow` displays artwork or a standard placeholder, normalized title, artist fallback, optional duration, and a labeled unavailable state without exposing playback or removal affordances.
-- No playback, queue, removal, background audio, or system media-control functionality exists yet.
+- `SongRow` displays artwork or a standard placeholder, normalized title, artist fallback, optional duration, and a labeled unavailable state. Only available rows become playback buttons.
+- `LibraryPlaybackItemProvider` maps a freshly resolved `LibrarySong` into immutable Playback input without exposing SwiftData, managed storage, or import implementation types.
+- `PlaybackStore` is the sole live owner of the current item, mutually exclusive phase, elapsed position, playable duration, failure, selection generation, and active engine session. It serializes transport commands and ignores stale selection results and tagged engine events.
+- `AVAudioPlayerEngine` owns one local `AVAudioPlayer`, its retained delegate bridge, tagged event stream, and position publication. `AVAudioSessionController` configures the playback category, defers explicit activation until playback, deactivates on silent states, and reports interruption start.
+- `CurrentSongBar` and item-driven `PlayerView` render shared Playback state and send commands without creating a second player or changing transport merely through presentation. Resource recovery reuses the Library import presentation.
+- Queue, removal, Now Playing metadata, remote commands, restoration, and full interruption or route-change policy do not exist yet.
 
 ### Current runtime flow
 
 ```text
 ResonaApp
   -> creates versioned ModelContainer, ManagedMediaStore,
-     SwiftDataLibraryRepository, AudioImportService, and LibraryStore
+     SwiftDataLibraryRepository, AudioImportService, LibraryStore,
+     LibraryPlaybackItemProvider, AVAudioPlayerEngine,
+     AVAudioSessionController, and PlaybackStore
   -> migrates an existing Item-only store without deleting Item data
-  -> installs the model container and Library presentation dependencies
+  -> installs the model container plus Library and Playback dependencies
 
 ContentView
   -> hosts NavigationStack -> LibraryView
+  -> synchronizes the engine position when the scene becomes active
 
 LibraryView
   -> starts the initial LibraryStore load
   -> renders empty, failure, or deterministic Songs List state
-  -> presents fileImporter and one item-driven ImportSheet
+  -> sends available stable song IDs to PlaybackStore
+  -> presents reusable import flow, CurrentSongBar, and item-driven PlayerView
+
+PlaybackStore
+  -> freshly resolves selected IDs through LibraryPlaybackItemProvider
+  -> prepares one tagged engine session and activates audio before Play
+  -> owns play, pause, seek, retry, completion, failure, and stale-event rules
+  -> remains empty after relaunch because playback state is not persisted
+
+AVAudioPlayerEngine / AVAudioSessionController
+  -> adapt one managed local URL and the iOS playback audio session
+  -> publish tagged position, completion, failure, and interruption events
+  -> never expose AVFoundation objects to Playback presentation
 
 ImportSessionModel
   -> consumes AudioImportService events
@@ -60,6 +79,7 @@ SwiftData
 LibraryRepository
   -> maps LibrarySongRecord to Sendable Library domain values
   -> derives availability through LibraryResourceResolving
+  -> freshly resolves one stable identity for Playback
   -> reports active audio and artwork filenames for reconciliation
 
 ManagedMediaStore
@@ -88,15 +108,20 @@ Resona/
 │   ├── Import/                    Source access, fingerprinting, typed results, and import coordination
 │   ├── Metadata/                  AVFoundation validation/reading and canonical normalization
 │   ├── Persistence/               V1 record, migration plan, repository, and resource boundary
-│   ├── Presentation/              Library state, Songs List, import sheet, and song rows
+│   ├── Presentation/              Library state, Songs List, reusable import presentation, and rows
 │   └── Storage/                   Managed resource staging, commit, cleanup, and reconciliation
+├── Playback/
+│   ├── Domain/                    Current item, phase, and typed failure values
+│   ├── Engine/                    Playback/audio-session interfaces and AVFoundation adapters
+│   ├── Library/                   Stable-ID Library-to-Playback provider boundary
+│   └── Presentation/              PlaybackStore, CurrentSongBar, PlayerView, and formatting
 └── Assets.xcassets                App icons, accent color, and visual assets
 
-ResonaTests/                       Persistence, storage, import, media-adapter, and scaffold tests
-ResonaUITests/                     UI-test target
+ResonaTests/                       Library, Playback state-machine, adapter, and presentation tests
+ResonaUITests/                     Import, Library, and critical Basic Playback UI journeys
 ```
 
-The Library folders are established source boundaries inside the application target, not separate Swift packages. Presentation reaches import and persistence only through Library-facing interfaces and immutable domain values.
+The Library and Playback folders are established source boundaries inside the application target, not separate Swift packages. Playback consumes canonical Library values only through `PlaybackItemProviding`; presentation reaches feature behavior through feature-facing state and interfaces.
 
 ## Target architectural boundaries
 
@@ -144,6 +169,8 @@ The Playback boundary owns the authoritative playback state:
 
 Playback must have one authoritative state owner. UI state may reflect playback state but must not become a second source of truth.
 
+The implemented Basic Playback subset uses `PlaybackStore` as that owner and `AVAudioPlayer` behind `AudioPlaybackEngine` for one managed local song. Engine events carry a session ID so replaced sessions cannot mutate current state. `AudioSessionControlling` isolates activation and interruption-start behavior. Queue behavior, MediaPlayer integration, restoration, and broader interruption or route policy remain planned.
+
 ### Presentation
 
 SwiftUI views render feature state and send user actions into feature boundaries. Views may own transient presentation state, but durable library state and authoritative playback state belong to their respective boundaries.
@@ -185,6 +212,8 @@ The existing `Item` model remains scaffold data, not a music-library model. It i
 
 `LibraryStore` owns the shared presentation snapshot and load state. `ImportSessionModel` owns only one sheet operation and never becomes a second durable source of library truth.
 
+`PlaybackStore` owns only live, non-persisted Basic Playback state. Relaunch begins in `idle`; it does not restore a current item or start audio. Its current item contains canonical Library metadata plus freshly resolved availability, while the engine's finite positive duration is authoritative for seeking.
+
 ## Platform integrations
 
 Planned platform integrations belong to these boundaries:
@@ -194,18 +223,20 @@ Planned platform integrations belong to these boundaries:
 | SwiftUI | Presentation |
 | SwiftData | Library persistence |
 | File importer and security-scoped resources | Library import; system multi-file selection and coordinated security-scoped reading are implemented |
-| AVFoundation | Playback and metadata; import validation and metadata adapters are implemented behind Library interfaces |
+| AVFoundation | Playback and metadata; Library validation/metadata adapters plus the single-song `AVAudioPlayer` and `AVAudioSession` adapters are implemented behind feature interfaces |
 | MediaPlayer and remote commands | Playback |
 | Background audio capability | Playback and app composition |
 
 Changes to capabilities, entitlements, signing, deployment targets, or background modes require explicit approval as defined in `AGENTS.md`.
 
+The app target declares only `audio` in `UIBackgroundModes` for Debug and Release. Together with the playback category and application-lifetime Playback owner, this supports continuation of already-started local audio while backgrounded or locked; it does not add background tasks, Now Playing metadata, remote commands, or relaunch restoration.
+
 ## Architectural decisions not yet made
 
 The repository does not yet establish:
 
-- The concrete playback engine and its public interface
 - Queue persistence and restoration semantics
+- Full interruption, route-change, system media-control, and Now Playing policy
 - Whether existing source-folder boundaries should later become Swift packages
 
 Resolve these decisions when the corresponding product specification is written. Record decisions in this document when they change the system map; do not silently infer them from planned feature names.

@@ -1,16 +1,16 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var libraryStore
-    @Environment(\.audioImporter) private var audioImporter
+    @Environment(PlaybackStore.self) private var playbackStore
 
     @State private var isSelectingFiles = false
-    @State private var importSession: ImportSessionModel?
-    @State private var pickerFailure: FilePickerFailure?
+    @State private var playerDestination: PlayerDestination?
+
+    let initialImportSession: ImportSessionModel?
 
     init(initialImportSession: ImportSessionModel? = nil) {
-        _importSession = State(initialValue: initialImportSession)
+        self.initialImportSession = initialImportSession
     }
 
     var body: some View {
@@ -26,25 +26,26 @@ struct LibraryView: View {
                     .accessibilityIdentifier("library.import")
                 }
             }
-            .fileImporter(
-                isPresented: $isSelectingFiles,
-                allowedContentTypes: [.audio],
-                allowsMultipleSelection: true
-            ) { result in
-                handleFileSelection(result)
-            } onCancellation: {
-                // Picker cancellation intentionally leaves the library unchanged.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let item = playbackStore.currentItem {
+                    CurrentSongBar(
+                        item: item,
+                        phase: playbackStore.phase,
+                        openPlayer: {
+                            playerDestination = PlayerDestination(songID: item.id)
+                        },
+                        play: playbackStore.play,
+                        pause: playbackStore.pause
+                    )
+                }
             }
-            .sheet(item: $importSession) { session in
-                ImportSheet(session: session)
+            .sheet(item: $playerDestination) { _ in
+                PlayerView()
             }
-            .alert(item: $pickerFailure) { failure in
-                Alert(
-                    title: Text("Files Couldn’t Be Opened"),
-                    message: Text(failure.message),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
+            .audioImportPresentation(
+                isSelectingFiles: $isSelectingFiles,
+                initialSession: initialImportSession
+            )
             .task {
                 await libraryStore.load()
             }
@@ -73,8 +74,29 @@ struct LibraryView: View {
             }
         case let .loaded(songs):
             List(songs) { song in
-                SongRow(song: song)
-                    .accessibilityIdentifier("library.song.\(song.id.uuidString)")
+                switch song.availability {
+                case .available:
+                    Button {
+                        Task {
+                            await playbackStore.select(songID: song.id)
+                        }
+                    } label: {
+                        SongRow(song: song)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(playbackStore.pendingSelectionID == song.id)
+                    .accessibilityHint("Starts playback")
+                    .accessibilityIdentifier(
+                        "library.song.\(song.id.uuidString)"
+                    )
+                case .unavailable:
+                    SongRow(song: song)
+                        .accessibilityIdentifier(
+                            "library.song.\(song.id.uuidString)"
+                        )
+                }
             }
             .listStyle(.plain)
         case .failed:
@@ -94,34 +116,17 @@ struct LibraryView: View {
         }
     }
 
-    private func handleFileSelection(_ result: Result<[URL], any Error>) {
-        switch result {
-        case let .success(urls):
-            guard !urls.isEmpty else {
-                return
-            }
-            importSession = ImportSessionModel(
-                sourceURLs: urls,
-                audioImporter: audioImporter,
-                libraryStore: libraryStore
-            )
-        case let .failure(error):
-            pickerFailure = FilePickerFailure(error: error)
-        }
+}
+
+private struct PlayerDestination: Identifiable {
+    let songID: UUID
+
+    var id: UUID {
+        songID
     }
 }
 
-private struct FilePickerFailure: Identifiable {
-    let id = UUID()
-    let message: String
-
-    init(error: any Error) {
-        message = String(
-            localized: "The selected files could not be accessed. Choose the files again."
-        )
-    }
-}
-
+#if DEBUG
 #Preview("Empty Library") {
     NavigationStack {
         LibraryView()
@@ -132,6 +137,7 @@ private struct FilePickerFailure: Identifiable {
             initialState: .loaded([])
         )
     )
+    .environment(PlaybackStore.preview())
 }
 
 #Preview("Populated Library") {
@@ -145,6 +151,7 @@ private struct FilePickerFailure: Identifiable {
             initialState: .loaded(songs)
         )
     )
+    .environment(PlaybackStore.preview())
 }
 
 private actor PreviewLibraryRepository: LibraryRepository {
@@ -216,3 +223,4 @@ private extension LibrarySong {
         ]
     }
 }
+#endif

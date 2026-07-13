@@ -53,8 +53,10 @@ struct SongRow: View {
     }
 }
 
-private struct SongArtwork: View {
+struct SongArtwork: View {
     let url: URL?
+    var dimension: CGFloat = 56
+    var cornerRadius: CGFloat = 8
     @State private var image: UIImage?
 
     var body: some View {
@@ -71,8 +73,8 @@ private struct SongArtwork: View {
                     .background(.quaternary)
             }
         }
-        .frame(width: 56, height: 56)
-        .clipShape(.rect(cornerRadius: 8))
+        .frame(width: dimension, height: dimension)
+        .clipShape(.rect(cornerRadius: cornerRadius))
         .accessibilityHidden(true)
         .task(id: url) {
             image = nil

@@ -38,8 +38,69 @@ final class ResonaUITests: XCTestCase {
         XCTAssertTrue(unavailable.exists)
         XCTAssertTrue(unavailable.label.contains("Missing Resource"))
         XCTAssertTrue(unavailable.label.contains("Unavailable"))
-        XCTAssertFalse(app.buttons["Aerial Lines"].exists)
+        XCTAssertTrue(
+            app.buttons[
+                "library.song.00000000-0000-0000-0000-000000000001"
+            ].exists
+        )
         XCTAssertFalse(app.buttons["Missing Resource"].exists)
+    }
+
+    @MainActor
+    func testSelectingSongControlsPlaybackWithoutSheetSideEffects() {
+        let app = launchApp(scenario: "--ui-testing-populated-library")
+        let song = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+        song.tap()
+
+        let openPlayer = app.buttons["playback.currentSong.open"]
+        let currentTransport = app.buttons["playback.currentSong.transport"]
+        XCTAssertTrue(openPlayer.waitForExistence(timeout: 5))
+        XCTAssertEqual(currentTransport.label, "Pause")
+
+        openPlayer.tap()
+        let playerTransport = app.buttons["player.transport"]
+        XCTAssertTrue(playerTransport.waitForExistence(timeout: 5))
+        XCTAssertEqual(playerTransport.label, "Pause")
+        app.buttons["player.done"].tap()
+
+        XCTAssertTrue(currentTransport.waitForExistence(timeout: 5))
+        XCTAssertEqual(currentTransport.label, "Pause")
+        currentTransport.tap()
+        waitForLabel("Play", on: currentTransport)
+
+        openPlayer.tap()
+        XCTAssertTrue(playerTransport.waitForExistence(timeout: 5))
+        XCTAssertEqual(playerTransport.label, "Play")
+        playerTransport.tap()
+        waitForLabel("Pause", on: playerTransport)
+    }
+
+    @MainActor
+    func testPlaybackFailuresExposeTypedRecovery() {
+        let resourceApp = launchApp(
+            scenario: "--ui-testing-playback-resource-failure"
+        )
+        let resourceOpen = resourceApp.buttons["playback.currentSong.open"]
+        XCTAssertTrue(resourceOpen.waitForExistence(timeout: 5))
+        resourceOpen.tap()
+        XCTAssertTrue(resourceApp.buttons["player.reimport"].waitForExistence(timeout: 5))
+        resourceApp.terminate()
+
+        let transientApp = launchApp(
+            scenario: "--ui-testing-playback-transient-failure"
+        )
+        let transientOpen = transientApp.buttons["playback.currentSong.open"]
+        XCTAssertTrue(transientOpen.waitForExistence(timeout: 5))
+        transientOpen.tap()
+        let retry = transientApp.buttons["player.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        retry.tap()
+        let transport = transientApp.buttons["player.transport"]
+        XCTAssertTrue(transport.waitForExistence(timeout: 5))
+        XCTAssertEqual(transport.label, "Pause")
     }
 
     @MainActor
@@ -90,6 +151,46 @@ final class ResonaUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["library.chooseFiles"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["library.chooseFiles"].isHittable)
+    }
+
+    @MainActor
+    func testCurrentSongControlsRemainUsableAtAccessibilityTextSize() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-populated-library",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+
+        let song = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+        song.tap()
+        let openPlayer = app.buttons["playback.currentSong.open"]
+        let transport = app.buttons["playback.currentSong.transport"]
+        XCTAssertTrue(openPlayer.waitForExistence(timeout: 5))
+        XCTAssertTrue(openPlayer.isHittable)
+        XCTAssertTrue(transport.isHittable)
+    }
+
+    @MainActor
+    private func waitForLabel(
+        _ label: String,
+        on element: XCUIElement,
+        timeout: TimeInterval = 5
+    ) {
+        let predicate = NSPredicate(format: "label == %@", label)
+        let expectation = XCTNSPredicateExpectation(
+            predicate: predicate,
+            object: element
+        )
+
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: timeout),
+            .completed
+        )
     }
 
     @MainActor

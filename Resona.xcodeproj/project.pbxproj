@@ -29,9 +29,22 @@
 		3522FD3030025A7C00A55CA9 /* ResonaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResonaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+	/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A1B2C3D4E5F60718293A4B5C /* Exceptions for "Resona" folder in "Resona" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 3522FD1630025A7B00A55CA9 /* Resona */;
+		};
+	/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		3522FD1930025A7B00A55CA9 /* Resona */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A1B2C3D4E5F60718293A4B5C /* Exceptions for "Resona" folder in "Resona" target */,
+			);
 			path = Resona;
 			sourceTree = "<group>";
 		};
@@ -175,6 +188,11 @@
 				TargetAttributes = {
 					3522FD1630025A7B00A55CA9 = {
 						CreatedOnToolsVersion = 26.6;
+						SystemCapabilities = {
+							com.apple.BackgroundModes = {
+								enabled = 1;
+							};
+						};
 					};
 					3522FD2530025A7C00A55CA9 = {
 						CreatedOnToolsVersion = 26.6;
@@ -400,6 +418,7 @@
 				DEVELOPMENT_TEAM = L7W4HCPX67;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Resona/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Resona;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -435,6 +454,7 @@
 				DEVELOPMENT_TEAM = L7W4HCPX67;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Resona/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Resona;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

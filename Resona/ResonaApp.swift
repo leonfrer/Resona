@@ -7,6 +7,7 @@ struct ResonaApp: App {
     private let audioImporter: any AudioImporting
     private let initialImportSession: ImportSessionModel?
     @State private var libraryStore: LibraryStore
+    @State private var playbackStore: PlaybackStore
 
     init() {
         do {
@@ -15,6 +16,7 @@ struct ResonaApp: App {
             audioImporter = dependencies.audioImporter
             initialImportSession = dependencies.initialImportSession
             _libraryStore = State(initialValue: dependencies.libraryStore)
+            _playbackStore = State(initialValue: dependencies.playbackStore)
         } catch {
             fatalError("Could not create app dependencies: \(error)")
         }
@@ -24,6 +26,7 @@ struct ResonaApp: App {
         WindowGroup {
             ContentView(initialImportSession: initialImportSession)
                 .environment(libraryStore)
+                .environment(playbackStore)
                 .environment(\.audioImporter, audioImporter)
         }
         .modelContainer(sharedModelContainer)
@@ -35,6 +38,7 @@ private struct AppDependencies {
     let modelContainer: ModelContainer
     let audioImporter: any AudioImporting
     let libraryStore: LibraryStore
+    let playbackStore: PlaybackStore
     let initialImportSession: ImportSessionModel?
 
     static func make() throws -> AppDependencies {
@@ -61,11 +65,17 @@ private struct AppDependencies {
                 try await audioImporter.reconcileLibrary()
             }
         )
+        let playbackStore = PlaybackStore(
+            itemProvider: LibraryPlaybackItemProvider(repository: repository),
+            engine: AVAudioPlayerEngine(),
+            audioSession: try AVAudioSessionController()
+        )
 
         return AppDependencies(
             modelContainer: modelContainer,
             audioImporter: audioImporter,
             libraryStore: libraryStore,
+            playbackStore: playbackStore,
             initialImportSession: nil
         )
     }
@@ -80,6 +90,10 @@ private struct AppDependencies {
             scenario = .populatedLibrary
         } else if arguments.contains("--ui-testing-import-session") {
             scenario = .importSession
+        } else if arguments.contains("--ui-testing-playback-resource-failure") {
+            scenario = .playbackResourceFailure
+        } else if arguments.contains("--ui-testing-playback-transient-failure") {
+            scenario = .playbackTransientFailure
         } else {
             return nil
         }
@@ -89,10 +103,38 @@ private struct AppDependencies {
         )
         let songs = scenario == .emptyLibrary ? [] : UITestScenario.songs
         let repository = UITestLibraryRepository(songs: songs)
-        let libraryStore = LibraryStore(
-            repository: repository,
-            initialState: .loaded(songs)
-        )
+        let libraryStore = LibraryStore(repository: repository)
+        let playbackStore: PlaybackStore
+        switch scenario {
+        case .playbackResourceFailure:
+            playbackStore = PlaybackStore(
+                itemProvider: LibraryPlaybackItemProvider(repository: repository),
+                engine: UITestAudioPlaybackEngine(),
+                audioSession: UITestAudioSessionController(),
+                initialItem: PlaybackItem(
+                    librarySong: UITestScenario.songs[2]
+                ),
+                initialPhase: .failed(.resourceUnavailable)
+            )
+        case .playbackTransientFailure:
+            playbackStore = PlaybackStore(
+                itemProvider: LibraryPlaybackItemProvider(repository: repository),
+                engine: UITestAudioPlaybackEngine(),
+                audioSession: UITestAudioSessionController(),
+                initialItem: PlaybackItem(
+                    librarySong: UITestScenario.songs[0]
+                ),
+                initialPhase: .failed(.playbackFailed),
+                initialPosition: 30,
+                initialDuration: 213
+            )
+        case .emptyLibrary, .populatedLibrary, .importSession:
+            playbackStore = PlaybackStore(
+                itemProvider: LibraryPlaybackItemProvider(repository: repository),
+                engine: UITestAudioPlaybackEngine(),
+                audioSession: UITestAudioSessionController()
+            )
+        }
         let audioImporter: any AudioImporting
         let initialImportSession: ImportSessionModel?
 
@@ -113,6 +155,7 @@ private struct AppDependencies {
             modelContainer: modelContainer,
             audioImporter: audioImporter,
             libraryStore: libraryStore,
+            playbackStore: playbackStore,
             initialImportSession: initialImportSession
         )
     }
@@ -124,6 +167,8 @@ nonisolated private enum UITestScenario {
     case emptyLibrary
     case populatedLibrary
     case importSession
+    case playbackResourceFailure
+    case playbackTransientFailure
 
     static let importURLs = [
         URL(filePath: "/ui-test/Imported.m4a"),
@@ -194,6 +239,55 @@ private actor UITestLibraryRepository: LibraryRepository {
 
     func insert(_ draft: LibrarySongDraft) {}
     func restore(_ draft: LibrarySongDraft) {}
+}
+
+private final class UITestAudioPlaybackEngine: AudioPlaybackEngine {
+    let events = AsyncStream<AudioPlaybackEvent> { _ in }
+
+    private var sessionID: UUID?
+    private var position: TimeInterval = 0
+
+    func prepare(url: URL) throws -> AudioPlaybackPreparation {
+        let sessionID = UUID()
+        let duration = url.lastPathComponent.contains("fallback") ? 65.0 : 213.0
+        self.sessionID = sessionID
+        position = 0
+        return AudioPlaybackPreparation(
+            sessionID: sessionID,
+            duration: duration
+        )
+    }
+
+    func play(sessionID: UUID) throws {
+        guard self.sessionID == sessionID else {
+            throw AudioPlaybackEngineError.startupFailed
+        }
+    }
+
+    func pause(sessionID: UUID) {}
+
+    func seek(to seconds: TimeInterval, sessionID: UUID) {
+        guard self.sessionID == sessionID else {
+            return
+        }
+        position = seconds
+    }
+
+    func currentPosition(sessionID: UUID) -> TimeInterval? {
+        self.sessionID == sessionID ? position : nil
+    }
+
+    func stop() {
+        sessionID = nil
+        position = 0
+    }
+}
+
+private final class UITestAudioSessionController: AudioSessionControlling {
+    let events = AsyncStream<AudioSessionEvent> { _ in }
+
+    func activate() throws {}
+    func deactivate() throws {}
 }
 
 private actor UITestImportAudioImporter: AudioImporting {
@@ -335,3 +429,17 @@ private struct UITestNoopAudioImporter: AudioImporting {
     func reconcileLibrary() async throws {}
 }
 #endif
+
+private extension PlaybackItem {
+    init(librarySong: LibrarySong) {
+        self.init(
+            id: librarySong.id,
+            title: librarySong.title,
+            artist: librarySong.artist,
+            album: librarySong.album,
+            artworkURL: librarySong.artworkURL,
+            availability: librarySong.availability,
+            libraryDurationSeconds: librarySong.durationSeconds
+        )
+    }
+}

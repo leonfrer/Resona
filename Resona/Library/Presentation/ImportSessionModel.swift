@@ -85,6 +85,12 @@ final class ImportSessionModel: Identifiable {
         }
     }
 
+    var recoverySongID: UUID? {
+        entries.reversed().lazy.compactMap {
+            $0.result?.outcome.recoverySongID
+        }.first
+    }
+
     func start() async {
         guard phase == .ready else {
             return
@@ -197,6 +203,18 @@ private extension ImportFileResult.Outcome {
         case let .imported(id), let .restored(id), let .warning(id, _):
             id
         case .alreadyImported, .failed, .cancelled:
+            nil
+        }
+    }
+
+    var recoverySongID: UUID? {
+        switch self {
+        case let .imported(id),
+             let .restored(id),
+             let .alreadyImported(id),
+             let .warning(id, _):
+            id
+        case .failed, .cancelled:
             nil
         }
     }
