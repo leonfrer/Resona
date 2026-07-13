@@ -12,20 +12,24 @@ The product direction is described in `README.md`. A feature listed there is pla
 
 The repository is in its foundation stage and currently contains a single iOS application target, a unit-test target, and a UI-test target.
 
-The application is still the initial SwiftUI and SwiftData scaffold:
+The application still presents the initial SwiftUI scaffold, and now includes the first implemented Library persistence foundation:
 
 - `ResonaApp` is the composition root.
-- It creates a disk-backed SwiftData `ModelContainer` containing the `Item` schema.
+- It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
+- Schema V0 represents the original `Item`-only store. Schema V1 adds `LibrarySongRecord` while retaining `Item`, with a lightweight V0-to-V1 migration.
 - It injects that container into `ContentView` through the SwiftUI environment.
 - `ContentView` queries, inserts, and deletes `Item` records directly through SwiftData.
 - `Item` contains only a timestamp.
-- No audio import, media library, metadata extraction, playback, queue, background audio, or system media-control functionality exists yet.
+- The Library domain defines stable song identity, normalized song values, content fingerprints, resource availability, duplicate candidates, and deterministic localized sorting.
+- `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`. SwiftData records and `ModelContext` do not cross that boundary.
+- Managed resource resolution is an injected boundary. No managed file store, audio import, library UI, metadata extraction, playback, queue, background audio, or system media-control functionality exists yet.
 
 ### Current runtime flow
 
 ```text
 ResonaApp
-  -> creates ModelContainer(Item)
+  -> creates versioned ModelContainer(Item, LibrarySongRecord)
+  -> migrates an existing Item-only store without deleting Item data
   -> presents ContentView
   -> injects ModelContext through the SwiftUI environment
 
@@ -35,22 +39,30 @@ ContentView
 
 SwiftData
   -> persists Item values on device
+  -> can persist LibrarySongRecord through SwiftDataLibraryRepository
+
+LibraryRepository
+  -> maps LibrarySongRecord to Sendable Library domain values
+  -> derives availability through LibraryResourceResolving
 ```
 
 ### Current source map
 
 ```text
 Resona/
-├── ResonaApp.swift       Application entry point and dependency composition
-├── ContentView.swift     Entire current user interface and persistence interaction
-├── Item.swift            Entire current persisted schema
-└── Assets.xcassets       App icons, accent color, and visual assets
+├── ResonaApp.swift                Application entry point and container composition
+├── ContentView.swift              Current scaffold user interface
+├── Item.swift                     Retained scaffold model and V0 schema
+├── Library/
+│   ├── Domain/                    Sendable song, identity, availability, and sorting values
+│   └── Persistence/               V1 record, migration plan, repository, and resource boundary
+└── Assets.xcassets                App icons, accent color, and visual assets
 
-ResonaTests/              Unit-test target
-ResonaUITests/            UI-test target
+ResonaTests/                       Migration, repository, sorting, and scaffold unit tests
+ResonaUITests/                     UI-test target
 ```
 
-There are no established feature modules or service layers yet. New code must not claim an existing layer or abstraction merely because it appears in the target architecture below.
+`Library/Domain` and `Library/Persistence` are established source boundaries inside the application target, not separate Swift packages. Import, managed storage, and Library presentation layers remain planned.
 
 ## Target architectural boundaries
 
@@ -84,7 +96,7 @@ The Library boundary owns imported media and the user's browsable collection:
 - Metadata reads and normalizes embedded metadata and artwork.
 - Persistence stores library records and restoration data.
 
-External files and metadata are untrusted boundary inputs. They must be validated before becoming domain data. The persistence schema must not be designed until the first library feature and its migration requirements are specified.
+External files and metadata are untrusted boundary inputs. They must be validated before becoming domain data. The initial library schema and non-destructive migration chain are established; later schema changes must extend that chain deliberately.
 
 ### Playback
 
@@ -129,7 +141,9 @@ These boundaries are invariants; the exact types, folder layout, and use of prot
 - The app composition layer owns the lifetime of shared services.
 - SwiftData is the current persistence technology, but `ModelContext` should not become a general-purpose dependency passed through unrelated features.
 
-The existing `Item` model is scaffold data, not an approved music-library schema. Replacing it becomes a destructive schema change once real user data can exist and therefore requires an explicit migration decision.
+The existing `Item` model remains scaffold data, not a music-library model. It is retained in schema V1 so the first library migration is additive and non-destructive. Removing it requires a separately approved migration decision.
+
+`LibrarySongRecord` is the V1 persisted music-library model. `SwiftDataLibraryRepository` owns its `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth.
 
 ## Platform integrations
 
@@ -150,11 +164,10 @@ Changes to capabilities, entitlements, signing, deployment targets, or backgroun
 
 The repository does not yet establish:
 
-- The music-library data model or migration plan
 - The concrete playback engine and its public interface
 - Queue persistence and restoration semantics
-- Feature folder or Swift package boundaries
-- Dependency-injection mechanics beyond SwiftUI environment values
+- Whether existing source-folder boundaries should later become Swift packages
+- App-level dependency-injection mechanics for Library services beyond the shared `ModelContainer`
 
 Resolve these decisions when the corresponding product specification is written. Record decisions in this document when they change the system map; do not silently infer them from planned feature names.
 

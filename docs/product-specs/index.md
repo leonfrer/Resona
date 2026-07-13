@@ -24,7 +24,7 @@ This dependency order does not require completing every library feature before i
 | Specification | Status | Implementation |
 | --- | --- | --- |
 | [Experience foundation](experience-foundation.md) | Active | Not started |
-| [Library foundation](library-foundation.md) | Active | Not started |
+| [Library foundation](library-foundation.md) | Active | In progress |
 | [Local audio import](local-audio-import.md) | Active | Not started |
 | [Music library](music-library.md) | Active | Not started |
 | [Basic playback](basic-playback.md) | Proposed | Not started |

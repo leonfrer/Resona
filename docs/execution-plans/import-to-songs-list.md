@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready
+In Progress
 
 ## Outcome
 
@@ -82,7 +82,7 @@ SwiftData model objects and `ModelContext` must not cross the persistence bounda
 
 ### Schema version
 
-Introduce `ResonaSchemaV1: VersionedSchema` and `ResonaMigrationPlan: SchemaMigrationPlan` at the app composition boundary.
+Represent the current unversioned `Item`-only store as `ResonaSchemaV0` version 1.0.0. Introduce `ResonaSchemaV1` version 2.0.0 and `ResonaMigrationPlan` with a lightweight V0-to-V1 stage at the app composition boundary.
 
 `ResonaSchemaV1` contains both `Item` and `LibrarySongRecord`. Keeping `Item` preserves the current scaffold store and avoids an unauthorized destructive model change. `ContentView` stops displaying scaffold items, but `Item.swift` and its stored rows remain untouched. Removing `Item` requires a later approved migration.
 
@@ -254,7 +254,7 @@ Use debug-only launch configuration and dependency injection for seeded UI state
 
 ## Implementation sequence
 
-### 1. Domain, schema, and repository
+### 1. Domain, schema, and repository — Completed
 
 - Add value types, `LibrarySongRecord`, versioned schema, migration plan, and repository boundary.
 - Preserve `Item` in the schema and add the additive migration test.
