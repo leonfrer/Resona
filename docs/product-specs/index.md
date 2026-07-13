@@ -27,16 +27,16 @@ This dependency order does not require completing every library feature before i
 | [Library foundation](library-foundation.md) | Active | Identity, storage, metadata, and consistency subset verified; removal deferred |
 | [Local audio import](local-audio-import.md) | Active | Import to Songs List slice implemented and verified |
 | [Music library](music-library.md) | Active | Songs List subset verified; playback selection and Library Management deferred |
-| [Basic playback](basic-playback.md) | Proposed | Not started |
+| [Basic playback](basic-playback.md) | Active | Not started |
 | [Playback integration](playback.md) | Proposed | Not started |
 
 ## Implementation readiness
 
-The active specifications approve implementation of the Foundations and Import to Songs List delivery slices. Concrete SwiftData fields, managed-file layout, type boundaries, and reconciliation mechanisms remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
+The active specifications approve implementation of the Foundations, Import to Songs List, and Basic Playback delivery slices. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
 
-The approved technical plan for that scope is [Import to Songs List Execution Plan](../execution-plans/import-to-songs-list.md).
+The current technical plans are [Import to Songs List Execution Plan](../execution-plans/import-to-songs-list.md) for the completed import scope and [Basic Playback Execution Plan](../execution-plans/basic-playback.md) for the next delivery slice.
 
-Basic Playback and Playback Integration remain Proposed. Their unresolved decisions do not block Import to Songs List, but behavior owned only by those specifications must not be claimed as complete until the owning specification becomes Active.
+Basic Playback is Active and ready for implementation under its execution plan, subject to explicit approval before enabling the Audio background mode. Playback Integration remains Proposed; behavior owned only by it must not be included in the Basic Playback slice or claimed as complete until its remaining decisions are resolved and it becomes Active.
 
 ## Recommended delivery slices
 
@@ -45,7 +45,7 @@ Basic Playback and Playback Integration remain Proposed. Their unresolved decisi
 3. **Basic playback:** start a song from the list and provide reliable play, pause, seek, end-of-song behavior, and minimum background continuation with one authoritative playback state.
 4. **Library management:** remove songs safely after interaction with the current item and queue has a defined policy.
 5. **Library expansion:** add album and artist browsing after real imported metadata is available to validate grouping behavior.
-6. **Playback integration:** add queue modes, background playback, system controls, interruption handling, and restoration incrementally.
+6. **Playback integration:** add queue modes, system controls, interruption and route-change handling, and restoration while preserving Basic Playback's minimum background continuation.
 
 Each slice must leave the app in a coherent, testable state. Later slices must not be treated as prerequisites for validating an earlier one unless a specification says so explicitly.
 

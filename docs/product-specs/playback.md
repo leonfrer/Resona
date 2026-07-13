@@ -19,7 +19,7 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 - Extend playback with next and previous commands.
 - Maintain and display a playback queue.
 - Support shuffle and repeat behavior.
-- Continue playback in the background.
+- Preserve Basic Playback's minimum background continuation while extending audio-session behavior to system integrations.
 - Integrate with the Lock Screen, Control Center, headphones, and remote commands.
 - Respond predictably to audio-session interruptions and route changes.
 - Restore the agreed previous queue and playback position without automatically starting audible playback.
@@ -61,7 +61,7 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 - Playback errors must be reported without corrupting the queue or library.
 - An unavailable queue item must not cause an endless retry or silent stall.
 - Headphone disconnection and audio-session interruptions must follow documented platform-appropriate behavior.
-- Background playback must not be claimed as implemented until the required capability and entitlement changes are explicitly approved and verified.
+- Basic Playback owns minimum continuation of already-started single-song playback in the background. This stage owns the additional interruption, route-change, remote-command, queue, and restoration behavior around it.
 - Queue, shuffle, repeat, and restoration semantics must be resolved before this specification becomes Active.
 - Restoration must not automatically begin audible playback when platform expectations or user intent do not support it.
 - Selecting a song from the songs list creates a snapshot queue in the list's displayed order and makes the selected song current without discarding valid earlier entries from that snapshot.
@@ -99,7 +99,6 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 - What should happen after headphone or external-route disconnection?
 - Should playback skip unavailable items automatically or stop with an error?
 - Which system remote commands are supported in the first release?
-- What minimum background-playback behavior defines the first releasable version?
 
 ## Related documents
 
