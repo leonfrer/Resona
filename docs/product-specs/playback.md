@@ -8,6 +8,8 @@ Proposed
 
 Users can extend reliable basic playback with a queue, expected iOS system controls, background audio, interruption handling, and useful state restoration.
 
+This specification is Proposed. Its requirements describe the problem boundary, but queue, interruption, route, restoration, and remote-command behavior is not approved for implementation until the open questions are resolved and the status becomes Active.
+
 ## Depends on
 
 - [Basic playback](basic-playback.md), which establishes the authoritative playback state and reliable foreground controls.
@@ -64,11 +66,7 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 - Basic Playback owns minimum continuation of already-started single-song playback in the background. This stage owns the additional interruption, route-change, remote-command, queue, and restoration behavior around it.
 - Queue, shuffle, repeat, and restoration semantics must be resolved before this specification becomes Active.
 - Restoration must not automatically begin audible playback when platform expectations or user intent do not support it.
-- Selecting a song from the songs list creates a snapshot queue in the list's displayed order and makes the selected song current without discarding valid earlier entries from that snapshot.
-- At the natural end of a song, playback advances to the next available queue item. If no next item exists and Repeat All is off, playback stops on the final song at its end position; the next Play restarts that song from the beginning.
-- Repeat One restarts the current song at its natural end. Repeat All wraps from the final available queue item to the first.
-- Enabling shuffle keeps the current song playing, randomizes upcoming items without duplication, and preserves already-played history for Previous navigation.
-- Previous restarts the current song when elapsed playback is at least three seconds; before three seconds it moves through playback history to the previous available item.
+- Library removal and playback queues must use one resolved invalidation policy without leaving references to deleted songs. The exact queue behavior remains an open question in this Proposed specification.
 
 ## Failure cases
 
@@ -82,13 +80,12 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 
 ## Acceptance criteria
 
-- Next and previous actions follow the resolved queue policy and keep UI state consistent with audible playback.
+- Once activated, Next and Previous actions follow the approved queue policy and keep UI state consistent with audible playback.
 - Supported Lock Screen, Control Center, and headphone commands control the same playback state as in-app controls.
 - Now Playing metadata matches the audible song and clears or updates when playback state requires it.
 - Playback responds correctly to interruptions and headphone disconnection according to the resolved policy.
-- A bad or missing queue item does not prevent later valid items from being handled according to queue policy.
-- Removing a queued song removes all of its queue occurrences; removing the current song stops playback and clears the current item before its library resources are deleted.
-- Natural end, Previous, shuffle, Repeat One, and Repeat All follow the resolved queue semantics without duplicating or silently losing valid queue items.
+- Bad, missing, or removed queue items follow the approved invalidation and unavailable-item policies without corrupting the queue or library.
+- Natural end, Previous, shuffle, Repeat One, and Repeat All follow the approved queue semantics without duplicating or silently losing valid queue items.
 - Relaunching restores the agreed queue and position state without unexpectedly starting audible playback.
 - The critical start, control, interruption, and restoration journeys have automated coverage where technically practical.
 
@@ -99,6 +96,9 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 - What should happen after headphone or external-route disconnection?
 - Should playback skip unavailable items automatically or stop with an error?
 - Which system remote commands are supported in the first release?
+- What queue is created when a user selects a song from a sorted or filtered library view?
+- How do Repeat One, Repeat All, shuffle history, and Previous interact at boundaries?
+- How are current and queued references invalidated when a library song is removed?
 
 ## Related documents
 
