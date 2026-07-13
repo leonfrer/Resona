@@ -11,6 +11,7 @@ xcodebuild \
   -configuration "$CONFIGURATION" \
   -destination "$DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
+  -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO \
   -only-testing:ResonaUITests \
   test
