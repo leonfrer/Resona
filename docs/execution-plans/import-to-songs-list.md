@@ -1,5 +1,7 @@
 # Import to Songs List Execution Plan
 
+> Historical completion record. This plan is not current behavioral or architectural guidance; use the owning product specifications and `ARCHITECTURE.md`.
+
 ## Status
 
 Completed

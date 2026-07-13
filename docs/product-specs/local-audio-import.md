@@ -50,11 +50,11 @@ Users can select supported audio files from the Files app and add them to a loca
 - Missing metadata must not prevent import when the audio itself is supported and readable.
 - Resona must use the title, artist, album, and artwork fallbacks defined by Library Foundation.
 - Interrupted imports must not leave incomplete library records or unmanaged partial files.
-- Import compares each selected file with existing and same-operation imports using a fingerprint of the complete file contents.
+- Import compares each selected file's complete content with existing and same-operation imports. The comparison mechanism is an implementation decision.
 - When an exact byte-identical song with an available managed resource already exists or succeeded earlier in the same operation, Resona skips the duplicate, keeps the existing song unchanged, and reports that the file was already imported.
 - When exact byte-identical content matches an unavailable library song, re-import restores its managed audio resource and canonical metadata while preserving its stable identity.
 - Matching filenames or display metadata alone do not make two files duplicates.
-- Import validates audio and extracts the canonical title, artist, album, and duration before committing a song. Artwork may finish asynchronously after the valid song and managed audio copy are committed.
+- Import validates audio and obtains the canonical title, artist, album, and duration before presenting a song as complete. Artwork processing must not invalidate otherwise supported audio; a placeholder may appear while artwork is unavailable.
 
 ## Progress and cancellation
 

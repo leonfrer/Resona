@@ -47,11 +47,11 @@ This specification describes product-level ownership and consistency rules. It d
 
 ## Stable identity
 
-- A new song receives an opaque, app-assigned UUID when its creation begins.
-- The UUID is persisted with the song and never changes during metadata updates, resource recovery, or app relaunches.
-- The UUID is not derived from filename, metadata, file location, or content fingerprint.
-- Content fingerprints are duplicate-detection evidence, not song identity. The fingerprint consists of a collision-resistant digest of the complete file bytes plus the byte count.
-- When the existing managed resource is available, Resona confirms a fingerprint match by comparing the complete bytes before applying duplicate behavior. When that resource is unavailable, the persisted digest and byte count are the recovery evidence used to restore the existing identity because no retained bytes remain to compare.
+- A new song receives an opaque, app-assigned identity during creation.
+- The identity persists and never changes during metadata updates, resource recovery, or app relaunches.
+- The identity is not derived from filename, metadata, file location, or audio content and is not presented as user-facing metadata.
+- Duplicate-detection evidence is separate from song identity. It must distinguish different file contents reliably enough that Resona never suppresses a distinct song merely because names or metadata match.
+- The algorithm and persisted representation used for identity and duplicate evidence are implementation decisions recorded in the active execution plan and current architecture.
 - Re-importing a song that the user previously removed is a new import with a new identity. Identity preservation applies only while the unavailable song still belongs to the library.
 
 ## Minimum song information
@@ -80,21 +80,19 @@ The exact persisted fields and representation remain architecture and implementa
 
 ## Artwork ownership
 
-- Successfully extracted artwork is stored as optional app-managed artwork associated with the stable song identity, separately from the persisted normalized metadata.
+- Successfully extracted artwork is retained as optional app-managed data associated with the stable song identity.
 - Artwork can be replaced or re-derived without changing song identity or audio-resource availability.
 - Missing, unreadable, or lost managed artwork falls back to the standard placeholder and does not make the song unavailable.
 - Removing a song also removes its app-managed artwork. Failure to clean up artwork follows the same retry rules as other app-owned resources.
 
 ## Consistency and recovery
 
-- Creation uses a private pending state that is never exposed as a playable library song.
-- A creation becomes visible only after the complete managed audio resource is in its final app-owned location and the durable song record references it.
-- If creation fails before that point, Resona removes its pending record and partial app-owned resources. Retrying starts the file's creation again without exposing the previous pending identity.
-- Resona reconciles interrupted pending operations when the library opens after launch and before starting another library mutation. It removes abandoned creation resources and resumes cleanup for accepted removals.
-- After the user confirms removal, Resona first makes the identity unavailable to new playback and clears required playback references, then durably records the removal intent before deleting its app-owned resources and active song record.
-- An accepted removal has no Undo period. It must not reappear as a playable song after interruption, even while physical cleanup is pending.
-- If removal cleanup cannot finish, Resona retries automatically on a later reconciliation and reports the affected song with a Try Again action. A pending-removal record is not treated as an active library song or a duplicate-import match.
-- Recovery must converge without an active record that claims a missing resource is playable and without an untracked partial resource. Diagnostic cleanup failures may be retained internally for retry, but are never presented as successful active songs.
+- Creation is not exposed as a playable song until its required durable data and complete managed audio are available.
+- Failed, canceled, or interrupted creation leaves no playable partial song or abandoned app-owned partial data after recovery.
+- Recovery runs when the library opens and before another library mutation when needed.
+- A removal accepted under the [Music Library removal policy](music-library.md#removal-policy) has no Undo and never reappears as a playable or duplicate-matching song while cleanup is pending.
+- Incomplete cleanup is retried automatically and exposes the affected song and a Try Again action when user intervention remains useful.
+- Recovery converges without claiming that a missing resource is playable and without treating cleanup bookkeeping as an active song.
 
 ## Supported audio policy
 
@@ -115,7 +113,7 @@ File extensions and picker content types are initial filters, not proof of valid
 - Every valid song conforms to the supported audio policy and canonical metadata contract.
 - No library song is exposed as playable before its complete managed audio resource is available.
 - A missing managed audio resource is reported as unavailable rather than as successful playback.
-- Re-importing matching content restores an unavailable song without changing its stable identity.
+- Re-importing content that satisfies the Local Audio Import duplicate policy restores an unavailable song without changing its stable identity.
 - Failed or interrupted creation and removal recover without a playable partial record or an unmanaged partial audio file.
 - Relaunch reconciliation removes abandoned creation state and resumes accepted removal cleanup without restoring a playable deleted song.
 - Removing a song removes its app-owned data according to the resolved removal policy and never changes the original external file.

@@ -83,9 +83,7 @@ The songs list must be independently testable before library management is consi
 - Removing a library item must not modify the user's original external file.
 - Removal must clean up the app-managed audio copy and related app-owned data.
 - If an audio resource becomes unavailable, the item must not silently behave as though playback succeeded.
-- Removing the current song stops playback, clears the current item, removes all occurrences from the queue, and then removes the library song and its app-owned resources.
-- Removing a queued but non-current song removes all of its queue occurrences before deleting its library data.
-- The removal confirmation states when the action will stop current playback.
+- Removal follows the complete policy below. Queue behavior is not approved until Playback Integration becomes Active.
 
 ## Display terminology
 
@@ -98,6 +96,8 @@ The songs list must be independently testable before library management is consi
 - Removal is immediately destructive after confirmation and has no Undo period.
 - The confirmation states that Resona's managed audio and artwork will be deleted, the original external file will not be changed, and current playback will stop when applicable.
 - The song becomes unavailable to new selection as soon as removal begins.
+- If the song is the current Basic Playback item, removal stops playback and clears the current item before deleting its app-owned resources. Removing any other song leaves the current item unchanged.
+- When queue behavior is approved, Playback Integration must define how removal clears queued references before this policy is extended to queues.
 - If cleanup cannot finish, the song is not restored as playable. Resona identifies it in removal feedback and offers Try Again while automatic reconciliation remains pending.
 - Album browsing, artist browsing, and search remain later delivery stages and do not block the Songs List or Library Management stages.
 
@@ -125,7 +125,7 @@ The songs list must be independently testable before library management is consi
 
 - Removing a song requires confirmation and leaves database and app-managed storage consistent.
 - Removing a song never deletes or modifies the user's original external file.
-- Removing the current song stops playback and leaves no current or queued reference to the removed identity.
+- Removing the current Basic Playback song stops playback and leaves no current reference to the removed identity.
 - Confirmed removal offers no Undo, never restores the song as playable after interruption, and provides Try Again when cleanup cannot finish.
 
 ## Related documents

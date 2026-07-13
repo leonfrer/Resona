@@ -208,6 +208,8 @@ The existing `Item` model remains scaffold data, not a music-library model. It i
 
 `ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's active filename snapshot and removes abandoned staging work plus unreferenced final resources; it never treats file presence as a persisted library record.
 
+The managed root currently lives in the app's Application Support directory. Audio and artwork are durable user data; Staging is temporary recovery state. Product capacity, backup, free-space, and responsiveness expectations are owned by [Quality Attributes](docs/product-specs/quality-attributes.md). Concrete storage mechanics belong here only after they are implemented.
+
 `AudioImportService` owns the lifetime and cancellation of one active import task. It publishes immutable progress and terminal per-file outcomes through an async stream. `ImportSessionModel` consumes those events on the main actor and refreshes `LibraryStore` after committed results.
 
 `LibraryStore` owns the shared presentation snapshot and load state. `ImportSessionModel` owns only one sheet operation and never becomes a second durable source of library truth.

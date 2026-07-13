@@ -45,6 +45,21 @@ Define the cross-feature product experience that import, library, and playback m
 - Interfaces respect Reduce Motion and do not rely on animation alone to communicate state.
 - Import progress remains attached to the import flow; playback progress remains attached to the current player.
 
+## Visual direction
+
+Resona uses a content-first, recognizably native Apple-platform aesthetic. Artwork and song information provide the visual character; controls remain calm, legible, and subordinate to listening.
+
+- Use system typography, semantic colors, standard control shapes, and platform materials as the baseline. Custom chrome requires a documented usability or identity need.
+- Prefer clear hierarchy and generous spacing over dense decoration. A screen should have one visually dominant task or content region.
+- Artwork is the primary visual anchor for a song. Missing artwork uses one consistent neutral placeholder that remains recognizable in Light Mode, Dark Mode, Increased Contrast, and grayscale.
+- Accent color identifies actionable and selected states but never becomes the only state indicator. Destructive, warning, unavailable, and playback states retain semantic labels or symbols.
+- The Songs List prioritizes title, then artist, then supporting duration or availability. Secondary metadata must not compete with the primary title.
+- The current-song surface feels persistent but lightweight; the detailed player may give artwork more prominence without obscuring transport labels or progress.
+- iPhone favors a focused single-column hierarchy. iPad uses available space for comfortable width and spacing rather than merely stretching phone rows; feature availability remains equivalent.
+- Standard sheets, alerts, menus, and transitions establish visual consistency. Avoid ornamental animation, gradients, shadows, or custom materials unless a future visual-system decision defines them.
+
+Every new major screen or reusable component must provide representative previews for empty, populated, loading, failure, Dark Mode, and accessibility text-size states when those states apply. A visual design system or custom brand language can supersede these defaults only through an updated Experience Foundation decision.
+
 ## Accessibility and adaptation
 
 - Primary actions and failure recovery remain usable with VoiceOver and large Dynamic Type sizes.
@@ -59,6 +74,7 @@ Define the cross-feature product experience that import, library, and playback m
 - Fatal failures, non-fatal warnings, cancellation, and destructive actions have visibly distinct feedback behavior.
 - All recoverable errors in the core import-to-playback journey offer a relevant next action.
 - Core navigation and state changes remain understandable with Reduce Motion, VoiceOver, and large Dynamic Type enabled.
+- Major screens follow the native, content-first hierarchy in Light Mode and Dark Mode without clipped primary actions or color-only state communication.
 
 ## Related documents
 
