@@ -56,6 +56,41 @@
 - Reserve `fatalError` and force unwraps for programmer errors or provably valid invariants.
 - Do not log sensitive user data.
 
+## Branch names
+
+Use the format `<type>/<short-kebab-case-description>`.
+
+Commonly used types:
+
+- `feature` — a new feature or user-visible behavior change.
+- `fix` — a bug fix.
+- `test` — test coverage or test stability work.
+- `docs` — documentation only.
+- `chore` — delivery, build scripts, CI, tooling, or project configuration.
+- `refactor` — code changes that do not alter user-visible behavior.
+- `release` — release preparation.
+- `hotfix` — an urgent production fix.
+
+Rules:
+
+- Use lowercase words separated by hyphens.
+- Describe the change's scope or outcome rather than its author or tool.
+- Prefer three to six descriptive words and omit redundant context.
+- Include a work-item identifier after the type when one exists, for example `fix/123-import-cancellation`.
+- Do not add an author or agent prefix unless repository automation explicitly requires one.
+
+Examples: `feature/basic-playback`, `fix/import-cancellation`, and `chore/import-songs-delivery`.
+
+### Creating a branch
+
+When asked to create a branch, use the latest remote default branch as its base unless another base is explicitly requested:
+
+1. Run `git switch main`.
+2. Run `git pull --ff-only origin main`.
+3. Run `git switch -c <branch-name>`.
+
+Do not create a new branch from the currently checked-out feature branch by default.
+
 ## Commit messages
 
 Follow the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification.
@@ -80,3 +115,10 @@ Rules:
 - Use the imperative mood in the description (`add`, not `added`).
 - Use a scope when the change is clearly limited to one area, e.g. `feat(playback): add repeat mode`.
 - Add `BREAKING CHANGE:` in the footer or `!` after the type/scope for breaking changes.
+
+## GitHub workflow
+
+- Prefer the `gh` CLI for GitHub operations, including pull requests, issues, checks, and workflow inspection.
+- Run `gh` in the host-machine environment so it can use the user's keychain authentication and normal network access. Use another GitHub integration only when the host `gh` CLI is unavailable or the user explicitly requests it.
+- Verify host authentication with `gh auth status` before a GitHub mutation.
+- Create pull requests as ready for review by default. Create a draft PR only when the user explicitly requests a draft.
