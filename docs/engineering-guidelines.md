@@ -56,6 +56,14 @@
 - Reserve `fatalError` and force unwraps for programmer errors or provably valid invariants.
 - Do not log sensitive user data.
 
+## Performance and storage
+
+- Treat the budgets in `product-specs/quality-attributes.md` as acceptance constraints, not as reasons to expose implementation details in product specifications.
+- Keep file-sized and collection-sized work off the main actor.
+- Process large files with bounded memory and cooperative cancellation.
+- Measure before adding caches, denormalized fields, pagination, or custom rendering solely for performance.
+- Durable imported media is user data, not an evictable cache. Temporary staging data must remain distinguishable and recoverable.
+
 ## Branch names
 
 Use the format `<type>/<short-kebab-case-description>`.
