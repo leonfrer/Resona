@@ -2,14 +2,23 @@
 
 Execution plans translate approved behavior into temporary implementation decisions for one delivery slice. They are not product specifications or required reading for unrelated work.
 
-## Current plans
+## Active plans
 
 | Plan | State | Reading guidance |
 | --- | --- | --- |
 | [Playback Integration](playback-integration.md) | Active | Implementation complete; physical-device acceptance pending |
-| [Library Management](library-management.md) | Complete | Historical verification record only |
-| [Basic Playback](basic-playback.md) | Complete | Historical verification record only |
-| [Import to Songs List](import-to-songs-list.md) | Complete | Historical verification record only |
+
+## Archived plans
+
+Completed plans are retained as historical verification records and are not required reading for current behavior or architecture.
+
+| Plan | State | Reading guidance |
+| --- | --- | --- |
+| [Development Schema Simplification](archive/development-schema-simplification.md) | Complete | Verified single-schema development persistence record |
+| [Item Model Removal](archive/item-model-removal.md) | Complete | Verified TD-001 schema cleanup record |
+| [Library Management](archive/library-management.md) | Complete | Historical verification record only |
+| [Basic Playback](archive/basic-playback.md) | Complete | Historical verification record only |
+| [Import to Songs List](archive/import-to-songs-list.md) | Complete | Historical verification record only |
 
 Known compromises and cleanup triggers live in the [technical-debt tracker](tech-debt-tracker.md), not in `AGENTS.md`, product specifications, or the current architecture map.
 

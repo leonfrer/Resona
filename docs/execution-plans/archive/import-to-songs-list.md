@@ -4,7 +4,7 @@
 
 ## Status
 
-Completed
+Complete
 
 ## Outcome
 
@@ -14,14 +14,14 @@ This plan converts the active product specifications into concrete implementatio
 
 ## Source documents
 
-- [Experience foundation](../product-specs/experience-foundation.md)
-- [Library foundation](../product-specs/library-foundation.md)
-- [Local audio import](../product-specs/local-audio-import.md)
-- [Music library](../product-specs/music-library.md), Songs List stage
-- [Architecture](../../ARCHITECTURE.md)
-- [Engineering guidelines](../engineering-guidelines.md)
-- [Testing](../testing.md)
-- [Delivery checklist](../delivery-checklist.md)
+- [Experience foundation](../../product-specs/experience-foundation.md)
+- [Library foundation](../../product-specs/library-foundation.md)
+- [Local audio import](../../product-specs/local-audio-import.md)
+- [Music library](../../product-specs/music-library.md), Songs List stage
+- [Architecture](../../../ARCHITECTURE.md)
+- [Engineering guidelines](../../engineering-guidelines.md)
+- [Testing](../../testing.md)
+- [Delivery checklist](../../delivery-checklist.md)
 
 ## Slice boundaries
 

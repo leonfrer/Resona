@@ -29,7 +29,7 @@
 		3522FD3030025A7C00A55CA9 /* ResonaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ResonaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-	/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		A1B2C3D4E5F60718293A4B5C /* Exceptions for "Resona" folder in "Resona" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -37,7 +37,7 @@
 			);
 			target = 3522FD1630025A7B00A55CA9 /* Resona */;
 		};
-	/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		3522FD1930025A7B00A55CA9 /* Resona */ = {

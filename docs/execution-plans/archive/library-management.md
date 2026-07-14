@@ -18,15 +18,15 @@ Integration behavior.
 
 ## Source documents
 
-- [Experience foundation](../product-specs/experience-foundation.md)
-- [Library foundation](../product-specs/library-foundation.md)
-- [Music library](../product-specs/music-library.md), Library Management stage
-- [Basic playback](../product-specs/basic-playback.md)
-- [Playback integration](../product-specs/playback.md)
-- [Architecture](../../ARCHITECTURE.md)
-- [Engineering guidelines](../engineering-guidelines.md)
-- [Testing](../testing.md)
-- [Delivery checklist](../delivery-checklist.md)
+- [Experience foundation](../../product-specs/experience-foundation.md)
+- [Library foundation](../../product-specs/library-foundation.md)
+- [Music library](../../product-specs/music-library.md), Library Management stage
+- [Basic playback](../../product-specs/basic-playback.md)
+- [Playback integration](../../product-specs/playback.md)
+- [Architecture](../../../ARCHITECTURE.md)
+- [Engineering guidelines](../../engineering-guidelines.md)
+- [Testing](../../testing.md)
+- [Delivery checklist](../../delivery-checklist.md)
 
 ## Slice boundaries
 

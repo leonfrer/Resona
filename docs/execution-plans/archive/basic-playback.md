@@ -14,15 +14,15 @@ This plan activates only single-song Basic Playback. It does not introduce a que
 
 ## Source documents
 
-- [Basic playback](../product-specs/basic-playback.md)
-- [Experience foundation](../product-specs/experience-foundation.md)
-- [Library foundation](../product-specs/library-foundation.md)
-- [Music library](../product-specs/music-library.md), Songs List stage
-- [Playback integration](../product-specs/playback.md)
-- [Architecture](../../ARCHITECTURE.md)
-- [Engineering guidelines](../engineering-guidelines.md)
-- [Testing](../testing.md)
-- [Delivery checklist](../delivery-checklist.md)
+- [Basic playback](../../product-specs/basic-playback.md)
+- [Experience foundation](../../product-specs/experience-foundation.md)
+- [Library foundation](../../product-specs/library-foundation.md)
+- [Music library](../../product-specs/music-library.md), Songs List stage
+- [Playback integration](../../product-specs/playback.md)
+- [Architecture](../../../ARCHITECTURE.md)
+- [Engineering guidelines](../../engineering-guidelines.md)
+- [Testing](../../testing.md)
+- [Delivery checklist](../../delivery-checklist.md)
 - [Apple: AVAudioPlayerDelegate](https://developer.apple.com/documentation/avfaudio/avaudioplayerdelegate)
 - [Apple: AVAudioSession](https://developer.apple.com/documentation/avfaudio/avaudiosession)
 - [Apple: Configuring background execution modes](https://developer.apple.com/documentation/xcode/configuring-background-execution-modes)
