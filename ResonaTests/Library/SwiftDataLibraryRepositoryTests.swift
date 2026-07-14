@@ -247,6 +247,165 @@ struct SwiftDataLibraryRepositoryTests {
         }
     }
 
+    @Test func beginsRemovalAndExcludesPendingIdentityFromActiveQueries() async throws {
+        let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
+        let repository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: StubLibraryResourceResolver()
+        )
+        let id = UUID()
+        let songDraft = draft(
+            id: id,
+            digest: "removed-content",
+            audioFilename: "removed.m4a",
+            title: "Removed Song",
+            artworkFilename: "removed.jpg"
+        )
+        try await repository.insert(songDraft)
+
+        let result = try await repository.beginRemoval(id: id)
+
+        #expect(
+            result == .accepted(
+                LibrarySongRemoval(
+                    id: id,
+                    title: "Removed Song",
+                    managedAudioFilename: "removed.m4a",
+                    managedArtworkFilename: "removed.jpg"
+                )
+            )
+        )
+        #expect(try await repository.fetchSongs(locale: .current).isEmpty)
+        #expect(try await repository.song(id: id) == nil)
+        #expect(
+            try await repository.duplicateCandidates(
+                matching: songDraft.fingerprint
+            ).isEmpty
+        )
+        #expect(
+            try await repository.pendingRemovals() == [
+                LibrarySongRemoval(
+                    id: id,
+                    title: "Removed Song",
+                    managedAudioFilename: "removed.m4a",
+                    managedArtworkFilename: "removed.jpg"
+                ),
+            ]
+        )
+        let references = try await repository.resourceReferences()
+        #expect(references.audioFilenames == ["removed.m4a"])
+        #expect(references.artworkFilenames == ["removed.jpg"])
+        #expect(try await repository.beginRemoval(id: id) == .missing)
+    }
+
+    @Test func pendingRemovalsAreDeterministicAndFinalizationIsIdempotent() async throws {
+        let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
+        let repository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: StubLibraryResourceResolver()
+        )
+        let laterID = UUID(
+            uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2)
+        )
+        let earlierID = UUID(
+            uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+        )
+        try await repository.insert(
+            draft(
+                id: laterID,
+                digest: "later",
+                audioFilename: "later.mp3",
+                title: "Later"
+            )
+        )
+        try await repository.insert(
+            draft(
+                id: earlierID,
+                digest: "earlier",
+                audioFilename: "earlier.mp3",
+                title: "Earlier"
+            )
+        )
+        _ = try await repository.beginRemoval(id: laterID)
+        _ = try await repository.beginRemoval(id: earlierID)
+
+        #expect(
+            try await repository.pendingRemovals().map(\.id)
+                == [earlierID, laterID]
+        )
+
+        try await repository.finalizeRemoval(id: earlierID)
+        try await repository.finalizeRemoval(id: earlierID)
+
+        #expect(try await repository.pendingRemovals().map(\.id) == [laterID])
+        #expect(try await repository.beginRemoval(id: UUID()) == .missing)
+    }
+
+    @Test func failedBeginRemovalRollsBackActiveRecordAndTombstone() async throws {
+        let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
+        let repository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: StubLibraryResourceResolver(),
+            beforeSave: { operation in
+                if operation == .beginRemoval {
+                    throw InjectedRepositoryError.saveFailed
+                }
+            }
+        )
+        let id = UUID()
+        try await repository.insert(
+            draft(
+                id: id,
+                digest: "preserved",
+                audioFilename: "preserved.wav",
+                title: "Preserved"
+            )
+        )
+
+        await #expect(throws: InjectedRepositoryError.saveFailed) {
+            try await repository.beginRemoval(id: id)
+        }
+
+        #expect(try await repository.song(id: id)?.title == "Preserved")
+        #expect(try await repository.pendingRemovals().isEmpty)
+    }
+
+    @Test func failedFinalizationKeepsPendingRemovalForRetry() async throws {
+        let container = try ResonaModelContainer.make(isStoredInMemoryOnly: true)
+        let failingRepository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: StubLibraryResourceResolver(),
+            beforeSave: { operation in
+                if operation == .finalizeRemoval {
+                    throw InjectedRepositoryError.saveFailed
+                }
+            }
+        )
+        let id = UUID()
+        try await failingRepository.insert(
+            draft(
+                id: id,
+                digest: "pending",
+                audioFilename: "pending.aiff",
+                title: "Pending"
+            )
+        )
+        _ = try await failingRepository.beginRemoval(id: id)
+
+        await #expect(throws: InjectedRepositoryError.saveFailed) {
+            try await failingRepository.finalizeRemoval(id: id)
+        }
+
+        #expect(try await failingRepository.pendingRemovals().map(\.id) == [id])
+
+        let retryRepository = SwiftDataLibraryRepository(
+            modelContainer: container,
+            resourceResolver: StubLibraryResourceResolver()
+        )
+        try await retryRepository.finalizeRemoval(id: id)
+        #expect(try await retryRepository.pendingRemovals().isEmpty)
+    }
+
     private func draft(
         id: UUID,
         digest: String,
@@ -269,4 +428,8 @@ struct SwiftDataLibraryRepositoryTests {
             managedArtworkFilename: artworkFilename
         )
     }
+}
+
+private enum InjectedRepositoryError: Error {
+    case saveFailed
 }

@@ -5,15 +5,22 @@ import SwiftData
 actor SwiftDataLibraryRepository: LibraryRepository {
     private var resourceResolver: any LibraryResourceResolving =
         UnavailableLibraryResourceResolver()
+    private var beforeSave: @Sendable (
+        LibraryRepositorySaveOperation
+    ) throws -> Void = { _ in }
 
     init(
         modelContainer: ModelContainer,
-        resourceResolver: any LibraryResourceResolving
+        resourceResolver: any LibraryResourceResolving,
+        beforeSave: @escaping @Sendable (
+            LibraryRepositorySaveOperation
+        ) throws -> Void = { _ in }
     ) {
         let modelContext = ModelContext(modelContainer)
         self.modelContainer = modelContainer
         modelExecutor = DefaultSerialModelExecutor(modelContext: modelContext)
         self.resourceResolver = resourceResolver
+        self.beforeSave = beforeSave
     }
 
     func fetchSongs(locale: Locale) async throws -> [LibrarySong] {
@@ -36,10 +43,21 @@ actor SwiftDataLibraryRepository: LibraryRepository {
     }
 
     func resourceReferences() throws -> LibraryResourceReferences {
-        let records = try modelContext.fetch(FetchDescriptor<LibrarySongRecord>())
+        let activeRecords = try modelContext.fetch(
+            FetchDescriptor<LibrarySongRecord>()
+        )
+        let removalRecords = try modelContext.fetch(
+            FetchDescriptor<LibrarySongRemovalRecord>()
+        )
         return LibraryResourceReferences(
-            audioFilenames: Set(records.map(\.managedAudioFilename)),
-            artworkFilenames: Set(records.compactMap(\.managedArtworkFilename))
+            audioFilenames: Set(
+                activeRecords.map(\.managedAudioFilename)
+                    + removalRecords.map(\.managedAudioFilename)
+            ),
+            artworkFilenames: Set(
+                activeRecords.compactMap(\.managedArtworkFilename)
+                    + removalRecords.compactMap(\.managedArtworkFilename)
+            )
         )
     }
 
@@ -97,8 +115,58 @@ actor SwiftDataLibraryRepository: LibraryRepository {
         try modelContext.save()
     }
 
+    func beginRemoval(id: UUID) throws -> LibraryRemovalBeginning {
+        guard let activeRecord = try record(id: id) else {
+            return .missing
+        }
+
+        let removal = LibrarySongRemoval(record: activeRecord)
+        modelContext.insert(LibrarySongRemovalRecord(removal: removal))
+        modelContext.delete(activeRecord)
+
+        do {
+            try beforeSave(.beginRemoval)
+            try modelContext.save()
+            return .accepted(removal)
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    func pendingRemovals() throws -> [LibrarySongRemoval] {
+        let records = try modelContext.fetch(
+            FetchDescriptor<LibrarySongRemovalRecord>()
+        )
+        return records
+            .map(LibrarySongRemoval.init)
+            .sorted { $0.id.uuidString < $1.id.uuidString }
+    }
+
+    func finalizeRemoval(id: UUID) throws {
+        guard let removalRecord = try removalRecord(id: id) else {
+            return
+        }
+
+        modelContext.delete(removalRecord)
+        do {
+            try beforeSave(.finalizeRemoval)
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
     private func record(id: UUID) throws -> LibrarySongRecord? {
         let descriptor = FetchDescriptor<LibrarySongRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func removalRecord(id: UUID) throws -> LibrarySongRemovalRecord? {
+        let descriptor = FetchDescriptor<LibrarySongRemovalRecord>(
             predicate: #Predicate { $0.id == id }
         )
         return try modelContext.fetch(descriptor).first
@@ -132,6 +200,11 @@ actor SwiftDataLibraryRepository: LibraryRepository {
     }
 }
 
+nonisolated enum LibraryRepositorySaveOperation: Equatable, Sendable {
+    case beginRemoval
+    case finalizeRemoval
+}
+
 private extension LibrarySongRecord {
     convenience init(draft: LibrarySongDraft) {
         self.init(
@@ -156,5 +229,36 @@ private extension LibrarySongRecord {
         album = draft.album
         durationSeconds = draft.durationSeconds
         managedArtworkFilename = draft.managedArtworkFilename
+    }
+}
+
+private extension LibrarySongRemoval {
+    nonisolated init(record: LibrarySongRecord) {
+        self.init(
+            id: record.id,
+            title: record.title,
+            managedAudioFilename: record.managedAudioFilename,
+            managedArtworkFilename: record.managedArtworkFilename
+        )
+    }
+
+    nonisolated init(record: LibrarySongRemovalRecord) {
+        self.init(
+            id: record.id,
+            title: record.title,
+            managedAudioFilename: record.managedAudioFilename,
+            managedArtworkFilename: record.managedArtworkFilename
+        )
+    }
+}
+
+private extension LibrarySongRemovalRecord {
+    convenience init(removal: LibrarySongRemoval) {
+        self.init(
+            id: removal.id,
+            title: removal.title,
+            managedAudioFilename: removal.managedAudioFilename,
+            managedArtworkFilename: removal.managedArtworkFilename
+        )
     }
 }

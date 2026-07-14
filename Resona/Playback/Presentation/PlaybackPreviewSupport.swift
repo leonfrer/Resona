@@ -98,5 +98,8 @@ private actor PlaybackPreviewLibraryRepository: LibraryRepository {
     ) -> [LibraryDuplicateCandidate] { [] }
     func insert(_ draft: LibrarySongDraft) {}
     func restore(_ draft: LibrarySongDraft) {}
+    func beginRemoval(id: UUID) -> LibraryRemovalBeginning { .missing }
+    func pendingRemovals() -> [LibrarySongRemoval] { [] }
+    func finalizeRemoval(id: UUID) {}
 }
 #endif

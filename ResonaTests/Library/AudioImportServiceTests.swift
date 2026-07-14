@@ -621,6 +621,12 @@ private actor FailingInsertLibraryRepository: LibraryRepository {
     func restore(_ draft: LibrarySongDraft) async throws {
         throw TestRepositoryError.insertFailed
     }
+
+    func beginRemoval(id: UUID) -> LibraryRemovalBeginning { .missing }
+
+    func pendingRemovals() -> [LibrarySongRemoval] { [] }
+
+    func finalizeRemoval(id: UUID) {}
 }
 
 private enum TestRepositoryError: Error {
