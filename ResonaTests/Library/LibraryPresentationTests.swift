@@ -574,7 +574,7 @@ private final class PresentationTestPlaybackInvalidator:
     private(set) var begunIDs: [UUID] = []
     private(set) var endedIDs: [UUID] = []
 
-    func beginRemovalInvalidation(for songID: UUID) {
+    func beginRemovalInvalidation(for songID: UUID) async {
         begunIDs.append(songID)
     }
 

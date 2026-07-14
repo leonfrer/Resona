@@ -80,7 +80,10 @@ private struct AppDependencies {
         let playbackStore = PlaybackStore(
             itemProvider: LibraryPlaybackItemProvider(repository: repository),
             engine: AVAudioPlayerEngine(),
-            audioSession: try AVAudioSessionController()
+            audioSession: try AVAudioSessionController(),
+            nowPlayingController: MPNowPlayingController(),
+            remoteCommandController: MPRemoteCommandController(),
+            restorationStore: try FilePlaybackRestorationStore.applicationSupport()
         )
 
         return AppDependencies(
@@ -107,6 +110,8 @@ private struct AppDependencies {
             scenario = .playbackResourceFailure
         } else if arguments.contains("--ui-testing-playback-transient-failure") {
             scenario = .playbackTransientFailure
+        } else if arguments.contains("--ui-testing-playback-restoration") {
+            scenario = .playbackRestoration
         } else if arguments.contains("--ui-testing-removal-final-song") {
             scenario = .removalFinalSong
         } else if arguments.contains("--ui-testing-removal-cleanup-failure") {
@@ -161,6 +166,25 @@ private struct AppDependencies {
                 initialPosition: 30,
                 initialDuration: 213
             )
+        case .playbackRestoration:
+            let restoredSong = UITestScenario.songs[0]
+            playbackStore = PlaybackStore(
+                itemProvider: LibraryPlaybackItemProvider(repository: repository),
+                engine: UITestAudioPlaybackEngine(),
+                audioSession: UITestAudioSessionController(),
+                restorationStore: UITestPlaybackRestorationStore(
+                    snapshot: PlaybackRestorationSnapshot(
+                        baseOrder: UITestScenario.songs.map(\.id),
+                        currentID: restoredSong.id,
+                        position: 30,
+                        repeatMode: .off,
+                        isShuffleEnabled: false,
+                        traversalOrder: UITestScenario.songs.map(\.id),
+                        history: [restoredSong.id],
+                        historyIndex: 0
+                    )
+                )
+            )
         case .emptyLibrary, .populatedLibrary, .importSession,
              .removalFinalSong, .removalCleanupFailure,
              .removalIdentifierTitle:
@@ -205,6 +229,7 @@ nonisolated private enum UITestScenario {
     case importSession
     case playbackResourceFailure
     case playbackTransientFailure
+    case playbackRestoration
     case removalFinalSong
     case removalCleanupFailure
     case removalIdentifierTitle
@@ -398,6 +423,22 @@ private final class UITestAudioSessionController: AudioSessionControlling {
 
     func activate() throws {}
     func deactivate() throws {}
+}
+
+private actor UITestPlaybackRestorationStore: PlaybackRestoring {
+    private var snapshot: PlaybackRestorationSnapshot?
+
+    init(snapshot: PlaybackRestorationSnapshot?) {
+        self.snapshot = snapshot
+    }
+
+    func load() -> PlaybackRestorationSnapshot? { snapshot }
+    func save(_ snapshot: PlaybackRestorationSnapshot) {
+        self.snapshot = snapshot
+    }
+    func clear() {
+        snapshot = nil
+    }
 }
 
 private actor UITestImportAudioImporter: AudioImporting {

@@ -30,7 +30,7 @@ This dependency order does not require completing every library feature before i
 | [Local audio import](local-audio-import.md) | Active | Import to Songs List slice implemented and verified |
 | [Music library](music-library.md) | Active | Songs List, playback selection, and Library Management implemented and verified |
 | [Basic playback](basic-playback.md) | Implemented | Runtime, Audio background mode, automated suites, and physical background/lock behavior verified |
-| [Playback integration](playback.md) | Active | Active execution plan; implementation not started |
+| [Playback integration](playback.md) | Active | Runtime and automated Simulator coverage complete; physical system-surface acceptance pending |
 | [Quality attributes](quality-attributes.md) | Active | Initial performance and storage targets defined; release evidence pending |
 
 ## Implementation readiness
@@ -39,7 +39,7 @@ The active specifications approve the remaining Foundation and Music Library wor
 
 The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The completed [Library Management Execution Plan](../execution-plans/library-management.md) retains its delivery evidence.
 
-Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration is Active and approved for implementation; system Now Playing presentation, remote commands, queues, restoration, and broader interruption or route behavior must not be claimed as implemented until its execution plan is completed and verified.
+Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration code and automated Simulator coverage are complete. Its specification remains Active until physical-device Lock Screen, Control Center, headset, interruption, route-change, and audible background acceptance is recorded in the execution plan.
 
 ## Recommended delivery slices
 

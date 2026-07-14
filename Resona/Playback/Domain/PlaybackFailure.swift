@@ -3,4 +3,5 @@ nonisolated enum PlaybackFailure: Equatable, Sendable {
     case resourceInvalid
     case startupFailed
     case playbackFailed
+    case queueUnavailable
 }

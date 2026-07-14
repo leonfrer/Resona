@@ -2,7 +2,7 @@
 
 ## Status
 
-Active. Product behavior is approved; implementation has not started.
+Active. Implementation and automated iPhone Simulator verification are complete; physical-device system-surface, interruption, and route acceptance remains pending.
 
 ## Outcome
 
@@ -229,7 +229,7 @@ Simulator automation cannot establish system remote-command, real interruption, 
 
 ## Implementation sequence
 
-### 1. Queue domain and selection context
+### 1. Queue domain and selection context — Implemented
 
 - Add queue, repeat, shuffle, history, and injectable-randomness domain types.
 - Extend the Library selection handoff with visible stable identity order.
@@ -237,14 +237,14 @@ Simulator automation cannot establish system remote-command, real interruption, 
 - Add exhaustive pure-domain and store tests before presentation changes.
 - Exit criterion: deterministic tests cover every queue boundary and the store audibly prepares at most one resolved candidate at a time.
 
-### 2. Queue presentation and removal invalidation
+### 2. Queue presentation and removal invalidation — Implemented
 
 - Add detailed-player transport, mode controls, and read-only queue presentation.
 - Extend removal invalidation across base order, traversal, history, and persisted projection.
 - Add preview states, accessibility semantics, and critical UI scenarios.
 - Exit criterion: app UI exposes the approved queue behavior and removal leaves no live queued reference to a deleted identity.
 
-### 3. Now Playing, remote commands, and audio-session policy
+### 3. Now Playing, remote commands, and audio-session policy — Implemented
 
 - Add MediaPlayer adapters and application-lifetime composition.
 - Extend audio-session notification mapping and store recovery policy.
@@ -252,14 +252,14 @@ Simulator automation cannot establish system remote-command, real interruption, 
 - Verify Lock Screen, Control Center, headset, interruption, route, and background advancement on an eligible physical device.
 - Exit criterion: every supported system surface drives the same authoritative state and no system surface displays stale playback claims.
 
-### 4. Silent restoration
+### 4. Silent restoration — Implemented
 
 - Add the versioned atomic restoration store and sanitized launch coordination.
 - Persist meaningful state transitions with bounded position-write frequency.
 - Add relaunch persistence tests, corrupt-state recovery, selection-race coverage, and a debug UI restoration scenario.
 - Exit criterion: a terminated app restores the approved logical state and position while remaining silent until explicit user intent.
 
-### 5. Delivery verification and documentation
+### 5. Delivery verification and documentation — Automated verification complete
 
 - During implementation, run targeted playback unit tests after each domain or adapter milestone.
 - On Simulator, run `./scripts/check.sh` after business-logic milestones and `./scripts/check-all.sh` before completion because this is a user-facing flow change.
@@ -268,6 +268,35 @@ Simulator automation cannot establish system remote-command, real interruption, 
 - Update product-spec and execution-plan status only for acceptance criteria actually verified.
 - Record commands, destinations, counts, warnings, screenshots or logs where useful, physical accessories, and any unverified risk in this plan.
 - Exit criterion: required automated and physical-device checks pass, current architecture matches runtime composition, and no deferred capability is claimed.
+
+## Implementation record — 2026-07-14
+
+Implemented:
+
+- Added one pure queue value with base order, traversal, bounded history, shuffle, repeat, natural-end, removal, and sanitized-restoration rules. Library selection now supplies visible stable-ID order, while every audible transition still resolves fresh canonical Library values.
+- Extended `PlaybackStore` as the sole authority for queue navigation, mode changes, removal purge and flush, typed interruption and route decisions, Now Playing projection, remote-command forwarding, and silent restoration races.
+- Added MediaPlayer adapters for canonical Now Playing metadata and the approved Play, Pause, Toggle Play/Pause, Next, Previous, and Change Playback Position commands. Unsupported commands remain disabled and unavailable capabilities return a non-success status.
+- Added a versioned atomic Application Support snapshot for queue, traversal, history, modes, current identity, and position. Initial writes remain gated until the old snapshot is read, explicit user selection supersedes unfinished restoration, and relaunch never restores a playing intention.
+- Added detailed-player previous, next, shuffle, repeat, and read-only queue presentation plus deterministic unit, adapter, persistence, store, and UI coverage.
+- Updated the current architecture map and product/execution indexes without changing SwiftData schema, deployment target, bundle identifier, signing, entitlements, background modes, or dependencies.
+
+Verified on an iPhone 17 Pro Simulator running the latest installed iOS 26.5 runtime:
+
+- `./scripts/check-all.sh` passed. The complete `ResonaTests` target passed, followed by 20 serial UI executions with 0 failures: 16 app scenarios and 4 launch configurations.
+- A final `./scripts/test-unit.sh` run passed after tightening restoration write gating and its user-selection race assertion.
+- The focused silent-restoration UI scenario passed, showing the restored item at `0:30` with a Play action and no automatic audible playback intent.
+- `git diff --check` passed, and every internal link in the changed documentation resolves.
+- Xcode emitted the existing skipped-AppIntents-metadata, Simulator debugger-version, and duplicate Web accessibility bundle diagnostics. No new application source warning was introduced.
+
+Pending physical-device acceptance:
+
+- Lock Screen and Control Center metadata and every supported command
+- Headset next, previous, play, pause, and route disconnection
+- Real interruption begin/end with both resume recommendations
+- Background and locked playback advancement with queue and Now Playing updates
+- Interactive VoiceOver order and representative iPhone and iPad layout inspection
+
+The plan remains Active and the product specification remains Active until those checks are recorded.
 
 ## Risks and controls
 

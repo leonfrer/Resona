@@ -22,4 +22,26 @@ nonisolated struct LibraryPlaybackItemProvider: PlaybackItemProviding {
             libraryDurationSeconds: song.durationSeconds
         )
     }
+
+    func items(for songIDs: [UUID]) async throws -> [PlaybackItem] {
+        let songs = try await repository.fetchSongs(locale: .autoupdatingCurrent)
+        let songsByID = Dictionary(uniqueKeysWithValues: songs.map { ($0.id, $0) })
+        return songIDs.compactMap { songID in
+            songsByID[songID].map { PlaybackItem(librarySong: $0) }
+        }
+    }
+}
+
+private extension PlaybackItem {
+    nonisolated init(librarySong: LibrarySong) {
+        self.init(
+            id: librarySong.id,
+            title: librarySong.title,
+            artist: librarySong.artist,
+            album: librarySong.album,
+            artworkURL: librarySong.artworkURL,
+            availability: librarySong.availability,
+            libraryDurationSeconds: librarySong.durationSeconds
+        )
+    }
 }

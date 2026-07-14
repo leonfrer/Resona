@@ -10,6 +10,8 @@ Users can extend reliable basic playback with a queue, expected iOS system contr
 
 The queue, interruption, route, restoration, removal, and first-release remote-command behavior in this specification is approved for implementation.
 
+The runtime and automated iPhone Simulator coverage are complete. Physical-device Lock Screen, Control Center, headset, interruption, route-change, and audible background acceptance remains outstanding before this specification can move to Implemented.
+
 ## Depends on
 
 - [Basic playback](basic-playback.md), which establishes the authoritative playback state and reliable foreground controls.

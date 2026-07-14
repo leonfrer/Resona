@@ -43,6 +43,13 @@ extension PlaybackFailure {
                 recoveryLabel: "Try Again",
                 recoveryAction: .retry
             )
+        case .queueUnavailable:
+            PlaybackFailurePresentation(
+                title: "No Playable Songs",
+                message: "Resona couldn’t find another playable song in this queue. Re-import unavailable songs or choose another song.",
+                recoveryLabel: "Try Again",
+                recoveryAction: .retry
+            )
         }
     }
 }

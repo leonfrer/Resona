@@ -82,8 +82,9 @@ struct LibraryView: View {
                 .accessibilityIdentifier("library.chooseFiles")
             }
         case let .loaded(songs):
+            let visibleSongIDs = songs.map(\.id)
             List(songs) { song in
-                songRow(song)
+                songRow(song, visibleSongIDs: visibleSongIDs)
                     .transition(
                         .move(edge: .leading).combined(with: .opacity)
                     )
@@ -108,12 +109,18 @@ struct LibraryView: View {
     }
 
     @ViewBuilder
-    private func songRow(_ song: LibrarySong) -> some View {
+    private func songRow(
+        _ song: LibrarySong,
+        visibleSongIDs: [UUID]
+    ) -> some View {
         switch song.availability {
         case .available:
             Button {
                 Task {
-                    await playbackStore.select(songID: song.id)
+                    await playbackStore.select(
+                        songID: song.id,
+                        queueIDs: visibleSongIDs
+                    )
                 }
             } label: {
                 SongRow(

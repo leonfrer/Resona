@@ -14,9 +14,17 @@ struct ContentView: View {
         NavigationStack {
             LibraryView(initialImportSession: initialImportSession)
         }
+        .task {
+            await playbackStore.restore()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 playbackStore.synchronizePosition()
+            } else {
+                Task {
+                    playbackStore.synchronizePosition()
+                    await playbackStore.flushRestoration()
+                }
             }
         }
     }

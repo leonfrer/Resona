@@ -79,6 +79,52 @@ final class ResonaUITests: XCTestCase {
     }
 
     @MainActor
+    func testPlayerExposesQueueModesAndNavigation() {
+        let app = launchApp(scenario: "--ui-testing-populated-library")
+        let song = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+        song.tap()
+        app.buttons["playback.currentSong.open"].tap()
+
+        let previous = app.buttons["player.previous"]
+        let next = app.buttons["player.next"]
+        let shuffle = app.buttons["player.shuffle"]
+        let repeatMode = app.buttons["player.repeat"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        XCTAssertTrue(previous.exists)
+        XCTAssertFalse(previous.isEnabled)
+        XCTAssertTrue(next.isEnabled)
+        XCTAssertEqual(shuffle.label, "Shuffle Off")
+        XCTAssertEqual(repeatMode.label, "Repeat Off")
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "player.queue.item.00000000-0000-0000-0000-000000000001"
+            ].waitForExistence(timeout: 5)
+        )
+
+        shuffle.tap()
+        waitForLabel("Shuffle On", on: shuffle)
+        repeatMode.tap()
+        waitForLabel("Repeat All", on: repeatMode)
+
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Filename Fallback"].waitForExistence(timeout: 5))
+        XCTAssertTrue(previous.isEnabled)
+
+        let unavailableQueueItem = app.descendants(matching: .any)[
+            "player.queue.item.00000000-0000-0000-0000-000000000003"
+        ]
+        for _ in 0..<3 where !unavailableQueueItem.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(unavailableQueueItem.waitForExistence(timeout: 5))
+        XCTAssertTrue(unavailableQueueItem.label.contains("Unavailable"))
+    }
+
+    @MainActor
     func testPlaybackFailuresExposeTypedRecovery() {
         let resourceApp = launchApp(
             scenario: "--ui-testing-playback-resource-failure"
@@ -101,6 +147,20 @@ final class ResonaUITests: XCTestCase {
         let transport = transientApp.buttons["player.transport"]
         XCTAssertTrue(transport.waitForExistence(timeout: 5))
         XCTAssertEqual(transport.label, "Pause")
+    }
+
+    @MainActor
+    func testRestorationLaunchesPausedWithoutAudiblePlaybackIntent() {
+        let app = launchApp(scenario: "--ui-testing-playback-restoration")
+        let openPlayer = app.buttons["playback.currentSong.open"]
+        XCTAssertTrue(openPlayer.waitForExistence(timeout: 5))
+        XCTAssertTrue(openPlayer.label.contains("Aerial Lines"))
+
+        openPlayer.tap()
+        let transport = app.buttons["player.transport"]
+        XCTAssertTrue(transport.waitForExistence(timeout: 5))
+        XCTAssertEqual(transport.label, "Play")
+        XCTAssertEqual(app.staticTexts["0:30"].label, "0:30")
     }
 
     @MainActor
