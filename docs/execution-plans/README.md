@@ -6,7 +6,7 @@ Execution plans translate approved behavior into temporary implementation decisi
 
 | Plan | State | Reading guidance |
 | --- | --- | --- |
-| [Library Management](library-management.md) | In progress | Active plan; read for Library Management work |
+| [Library Management](library-management.md) | Complete | Historical verification record only |
 | [Basic Playback](basic-playback.md) | Complete | Historical verification record only |
 | [Import to Songs List](import-to-songs-list.md) | Complete | Historical verification record only |
 
