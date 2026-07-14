@@ -81,13 +81,15 @@ struct SongArtwork: View {
         .clipShape(.rect(cornerRadius: cornerRadius))
         .accessibilityHidden(true)
         .task(id: url) {
-            image = nil
-            guard let url,
-                  let data = await SongArtworkDataLoader.shared.load(at: url),
-                  !Task.isCancelled else {
+            guard let url else {
+                image = nil
                 return
             }
-            image = UIImage(data: data)
+            let data = await SongArtworkDataLoader.shared.load(at: url)
+            guard !Task.isCancelled else {
+                return
+            }
+            image = data.flatMap(UIImage.init(data:))
         }
     }
 }

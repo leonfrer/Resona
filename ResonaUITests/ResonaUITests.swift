@@ -57,14 +57,22 @@ final class ResonaUITests: XCTestCase {
 
         let openPlayer = app.buttons["playback.currentSong.open"]
         let currentTransport = app.buttons["playback.currentSong.transport"]
+        let currentPrevious = app.buttons["playback.currentSong.previous"]
+        let currentNext = app.buttons["playback.currentSong.next"]
         XCTAssertTrue(openPlayer.waitForExistence(timeout: 5))
         XCTAssertEqual(currentTransport.label, "Pause")
+        XCTAssertFalse(currentPrevious.isEnabled)
+        XCTAssertTrue(currentNext.isEnabled)
+        XCTAssertFalse(app.staticTexts["Playing"].exists)
 
         openPlayer.tap()
         let playerTransport = app.buttons["player.transport"]
         XCTAssertTrue(playerTransport.waitForExistence(timeout: 5))
         XCTAssertEqual(playerTransport.label, "Pause")
-        app.buttons["player.done"].tap()
+        XCTAssertFalse(app.buttons["player.done"].exists)
+        XCTAssertFalse(app.staticTexts["Playing"].exists)
+
+        app.swipeDown()
 
         XCTAssertTrue(currentTransport.waitForExistence(timeout: 5))
         XCTAssertEqual(currentTransport.label, "Pause")
@@ -90,12 +98,14 @@ final class ResonaUITests: XCTestCase {
 
         let previous = app.buttons["player.previous"]
         let next = app.buttons["player.next"]
+        let queue = app.buttons["player.queue.open"]
+        XCTAssertTrue(queue.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["player.shuffle"].exists)
+        queue.tap()
+
         let shuffle = app.buttons["player.shuffle"]
         let repeatMode = app.buttons["player.repeat"]
-        XCTAssertTrue(next.waitForExistence(timeout: 5))
-        XCTAssertTrue(previous.exists)
-        XCTAssertFalse(previous.isEnabled)
-        XCTAssertTrue(next.isEnabled)
+        XCTAssertTrue(shuffle.waitForExistence(timeout: 5))
         XCTAssertEqual(shuffle.label, "Shuffle Off")
         XCTAssertEqual(repeatMode.label, "Repeat Off")
 
@@ -110,10 +120,6 @@ final class ResonaUITests: XCTestCase {
         repeatMode.tap()
         waitForLabel("Repeat All", on: repeatMode)
 
-        next.tap()
-        XCTAssertTrue(app.staticTexts["Filename Fallback"].waitForExistence(timeout: 5))
-        XCTAssertTrue(previous.isEnabled)
-
         let unavailableQueueItem = app.descendants(matching: .any)[
             "player.queue.item.00000000-0000-0000-0000-000000000003"
         ]
@@ -122,6 +128,26 @@ final class ResonaUITests: XCTestCase {
         }
         XCTAssertTrue(unavailableQueueItem.waitForExistence(timeout: 5))
         XCTAssertTrue(unavailableQueueItem.label.contains("Unavailable"))
+
+        shuffle.tap()
+        waitForLabel("Shuffle Off", on: shuffle)
+
+        let sheetDragStart = app.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.52)
+        )
+        let sheetDragEnd = app.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)
+        )
+        sheetDragStart.press(forDuration: 0.1, thenDragTo: sheetDragEnd)
+        XCTAssertTrue(shuffle.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        XCTAssertTrue(previous.exists)
+        XCTAssertTrue(previous.isEnabled)
+        XCTAssertTrue(next.isEnabled)
+
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Filename Fallback"].waitForExistence(timeout: 5))
+        XCTAssertTrue(previous.isEnabled)
     }
 
     @MainActor
@@ -161,6 +187,34 @@ final class ResonaUITests: XCTestCase {
         XCTAssertTrue(transport.waitForExistence(timeout: 5))
         XCTAssertEqual(transport.label, "Play")
         XCTAssertEqual(app.staticTexts["0:30"].label, "0:30")
+    }
+
+    @MainActor
+    func testScrubberTapKeepsPositionAndDragStartsFromCurrentPosition() {
+        let app = launchApp(scenario: "--ui-testing-playback-restoration")
+        let openPlayer = app.buttons["playback.currentSong.open"]
+        XCTAssertTrue(openPlayer.waitForExistence(timeout: 5))
+        openPlayer.tap()
+
+        let scrubber = app.otherElements["Playback Position"]
+        XCTAssertTrue(scrubber.waitForExistence(timeout: 5))
+        XCTAssertEqual(scrubber.value as? String, "0:30")
+
+        scrubber.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)
+        ).tap()
+
+        XCTAssertEqual(scrubber.value as? String, "0:30")
+
+        let dragStart = scrubber.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)
+        )
+        let dragEnd = scrubber.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+        )
+        dragStart.press(forDuration: 0.2, thenDragTo: dragEnd)
+
+        XCTAssertEqual(scrubber.value as? String, "0:51")
     }
 
     @MainActor
@@ -230,9 +284,18 @@ final class ResonaUITests: XCTestCase {
         song.tap()
         let openPlayer = app.buttons["playback.currentSong.open"]
         let transport = app.buttons["playback.currentSong.transport"]
+        let next = app.buttons["playback.currentSong.next"]
         XCTAssertTrue(openPlayer.waitForExistence(timeout: 5))
         XCTAssertTrue(openPlayer.isHittable)
         XCTAssertTrue(transport.isHittable)
+        XCTAssertTrue(next.isHittable)
+
+        openPlayer.tap()
+        let playerTransport = app.buttons["player.transport"]
+        let queue = app.buttons["player.queue.open"]
+        XCTAssertTrue(playerTransport.waitForExistence(timeout: 5))
+        XCTAssertTrue(playerTransport.isHittable)
+        XCTAssertTrue(queue.isHittable)
     }
 
     @MainActor

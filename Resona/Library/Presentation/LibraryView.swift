@@ -4,10 +4,13 @@ struct LibraryView: View {
     @Environment(LibraryStore.self) private var libraryStore
     @Environment(PlaybackStore.self) private var playbackStore
     @Environment(\.libraryRemover) private var libraryRemover
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @Namespace private var playerTransition
     @State private var isSelectingFiles = false
     @State private var playerDestination: PlayerDestination?
     @State private var removalCandidate: LibrarySong?
+    @AccessibilityFocusState private var isCurrentSongBarFocused: Bool
 
     let initialImportSession: ImportSessionModel?
 
@@ -37,16 +40,49 @@ struct LibraryView: View {
                     CurrentSongBar(
                         item: item,
                         phase: playbackStore.phase,
+                        artworkTransitionNamespace: playerTransition,
                         openPlayer: {
                             playerDestination = PlayerDestination(songID: item.id)
                         },
                         play: playbackStore.play,
-                        pause: playbackStore.pause
+                        pause: playbackStore.pause,
+                        previous: {
+                            Task {
+                                await playbackStore.previous()
+                            }
+                        },
+                        next: {
+                            Task {
+                                await playbackStore.next()
+                            }
+                        },
+                        canGoPrevious: playbackStore.canGoPrevious,
+                        canGoNext: playbackStore.canGoNext,
+                        isTransitioning: playbackStore.pendingSelectionID != nil
                     )
+                    .accessibilityFocused($isCurrentSongBarFocused)
                 }
             }
-            .sheet(item: $playerDestination) { _ in
-                PlayerView()
+            .fullScreenCover(
+                item: $playerDestination,
+                onDismiss: {
+                    isCurrentSongBarFocused = true
+                }
+            ) { _ in
+                if reduceMotion {
+                    PlayerView()
+                        .presentationBackground(.clear)
+                } else {
+                    PlayerView()
+                        .navigationTransition(
+                            .zoom(
+                                sourceID: PlaybackPresentationTransitionID
+                                    .currentSongArtwork,
+                                in: playerTransition
+                            )
+                        )
+                        .presentationBackground(.clear)
+                }
             }
             .audioImportPresentation(
                 isSelectingFiles: $isSelectingFiles,

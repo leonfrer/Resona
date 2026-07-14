@@ -7,6 +7,7 @@ Execution plans translate approved behavior into temporary implementation decisi
 | Plan | State | Reading guidance |
 | --- | --- | --- |
 | [Playback Integration](playback-integration.md) | Active | Implementation complete; physical-device acceptance pending |
+| [Player Interface Refresh](player-interface-refresh.md) | Active | Implementation and manual acceptance complete; full verification pending |
 
 ## Archived plans
 

@@ -171,8 +171,8 @@ Playback remains an established source boundary inside the application target. I
 
 - Add Previous, primary Play/Pause or Restart, and Next controls to `PlayerView` with independent accessible labels and identifiers.
 - Add explicit shuffle and repeat controls whose label, value, symbol, and selected state do not rely on color alone.
-- Present a read-only queue section in the existing scrollable player, distinguishing current, upcoming, and unavailable state without creating a second navigation stack or transport owner.
-- Keep `CurrentSongBar` focused on current metadata, opening the player, and primary Play/Pause. Detailed queue controls remain in `PlayerView` for this slice.
+- Present the read-only queue in a separate bottom sheet, distinguishing current, upcoming, and unavailable state without creating a second navigation stack or transport owner.
+- Keep `CurrentSongBar` focused on compact current metadata, opening the player, and Previous, primary Play/Pause or Restart, and Next controls. Queue modes remain on the separate Queue surface.
 - Pass the loaded Songs List's visible identity order with selection. Queue inspection, opening the player, and dismissing the player issue no transport commands.
 - Verify layout with accessibility Dynamic Type, VoiceOver order, Dark Mode, Increased Contrast, Reduce Motion, and representative iPhone and iPad sizes.
 

@@ -40,6 +40,7 @@ extension PlaybackStore {
 
 extension View {
     func playbackPreviewEnvironment(
+        item: PlaybackItem? = PlaybackItem.preview,
         phase: PlaybackPhase,
         position: TimeInterval = 0,
         duration: TimeInterval? = nil
@@ -47,7 +48,7 @@ extension View {
         let repository = PlaybackPreviewLibraryRepository()
         return environment(
             PlaybackStore.preview(
-                item: .preview,
+                item: item,
                 phase: phase,
                 position: position,
                 duration: duration
