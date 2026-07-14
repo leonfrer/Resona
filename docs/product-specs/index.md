@@ -31,7 +31,7 @@ import or playback.
 | [Library foundation](library-foundation.md) | Active |
 | [Local audio import](local-audio-import.md) | Active |
 | [Music library](music-library.md) | Active |
-| [Basic playback](basic-playback.md) | Implemented |
+| [Basic playback](basic-playback.md) | Active |
 | [Playback integration](playback.md) | Active |
 | [Quality attributes](quality-attributes.md) | Active |
 

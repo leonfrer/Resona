@@ -13,8 +13,9 @@ Define the cross-feature product experience that import, library, and playback m
 - The library is the primary app destination and the entry point for import and song selection.
 - The library remains the root destination. Import and player presentation do not replace it with another root destination.
 - The empty library presents import as its primary action and briefly explains that imported audio is copied into Resona for offline playback.
-- When a current song exists, the library presents a persistent current-song affordance. Activating it presents the detailed player without starting or restarting playback.
-- The detailed player uses a platform-standard sheet. Dismissing it returns to the same library context without changing playback.
+- When a current song exists, the library presents a persistent Liquid Glass current-song affordance. It shows compact artwork and metadata plus Previous, Play/Pause or Restart, and Next controls inside one glass surface. It omits routine playback-status text, and activating its metadata region presents the detailed player without starting or restarting playback.
+- The detailed player occupies the full app surface as an immersive media view rather than appearing as a task sheet. Pulling it downward dismisses it and returns to the same library context without changing playback; it does not show a Done button.
+- The playback queue is a separate system sheet that rises from the bottom of the detailed player. Shuffle and repeat controls belong to this queue surface, and opening or dismissing it does not change transport state.
 - Import begins with the system file picker. After files are selected, progress and results remain in an import sheet over the library.
 - Queue, album, and artist destinations are introduced only when their corresponding product stages are implemented; placeholder destinations are not shown.
 
@@ -42,6 +43,8 @@ Define the cross-feature product experience that import, library, and playback m
 
 - Use platform-standard navigation, sheets, menus, alerts, and transitions unless a documented product need requires custom behavior.
 - Motion communicates navigation or state change and must not delay direct playback controls.
+- The detailed player expands from the compact artwork inside the persistent current-song surface and contracts back into that artwork on dismissal. The artwork's position, size, and corner shape remain visually continuous while the rest of the detailed player appears or disappears around it, including when the current song changes while the player is open. Reduce Motion replaces this zoom with the ordinary full-screen presentation transition.
+- Starting playback from the detailed player enlarges the artwork slightly with a brief spring response; pausing returns it to its resting size. Reduce Motion preserves the size change without the spring animation.
 - Interfaces respect Reduce Motion and do not rely on animation alone to communicate state.
 - Import progress remains attached to the import flow; playback progress remains attached to the current player.
 
@@ -54,7 +57,12 @@ Resona uses a content-first, recognizably native Apple-platform aesthetic. Artwo
 - Artwork is the primary visual anchor for a song. Missing artwork uses one consistent neutral placeholder that remains recognizable in Light Mode, Dark Mode, Increased Contrast, and grayscale.
 - Accent color identifies actionable and selected states but never becomes the only state indicator. Destructive, warning, unavailable, and playback states retain semantic labels or symbols.
 - The Songs List prioritizes title, then artist, then supporting duration or availability. Secondary metadata must not compete with the primary title.
-- The current-song surface feels persistent but lightweight; the detailed player may give artwork more prominence without obscuring transport labels or progress.
+- The current-song surface feels persistent but lightweight; the detailed player may give artwork more prominence without obscuring transport controls or progress.
+- The current-song surface uses native Liquid Glass as a floating functional layer over Library content. Glass is not used as decoration throughout the player content layer.
+- The current-song surface uses a compact, fully rounded capsule with small inset rounded-square artwork and places Previous, primary transport, and Next controls inside the same glass shape. The primary transport symbol communicates routine playing or paused state without a separate status label.
+- Detailed-player transport and Queue actions use transparent, symbol-led controls without persistent gray button backgrounds. Play and Pause remain distinguishable by symbol and accessible action label rather than visible button text.
+- Routine Playing and Paused labels are omitted from the detailed player because the primary transport symbol communicates that state. Preparing, unavailable, failed, and other states that require explanation retain explicit feedback.
+- Playback progress uses a thumb-free capsule scrubber that expands while interacting, preserves a comfortable touch target, and provides complete accessibility adjustment behavior.
 - iPhone favors a focused single-column hierarchy. iPad uses available space for comfortable width and spacing rather than merely stretching phone rows; feature availability remains equivalent.
 - Standard sheets, alerts, menus, and transitions establish visual consistency. Avoid ornamental animation, gradients, shadows, or custom materials unless a future visual-system decision defines them.
 
@@ -71,6 +79,16 @@ Every new major screen or reusable component must provide representative preview
 - A first-time user with an empty library can identify how to import music without opening another destination.
 - A user can move from library to current player and back without losing playback state.
 - Opening the detailed player from the current-song affordance does not issue a playback command.
+- The detailed player fills the app surface, has no Done button, and returns to the unchanged Library context through a downward dismissal gesture.
+- Opening and dismissing the detailed player uses the compact current-song artwork as a stable shared transition source; changing songs inside the player does not break the return animation to the current artwork.
+- The queue rises from the bottom as a separate surface and owns shuffle and repeat controls without issuing a transport command when it opens or closes.
+- The current-song affordance uses native Liquid Glass, while detailed-player buttons remain visually transparent and expose unambiguous VoiceOver labels.
+- The current-song affordance keeps compact artwork and independently accessible Previous, primary transport, and Next actions inside one glass surface without routine Playing or Paused text.
+- Replacing the selected song does not make the persistent current-song affordance disappear and reappear while the replacement is being prepared.
+- The detailed player communicates routine Play and Pause state through the primary transport symbol without a redundant status label or visible Play/Pause text.
+- The Play and Pause symbols transition in place, respecting Reduce Motion, rather than abruptly replacing the entire control.
+- The detailed-player artwork becomes slightly larger while playback is active, responds with a brief spring when Play is selected, and changes size without spring motion when Reduce Motion is enabled.
+- The scrubber remains precise, seekable, and accessible without a visible thumb; pressing the track holds the current position regardless of touch location, while horizontal dragging adjusts from that held position, previews progress locally, and commits the seek when interaction ends. A tap or hold without a drag does not seek.
 - Fatal failures, non-fatal warnings, cancellation, and destructive actions have visibly distinct feedback behavior.
 - All recoverable errors in the core import-to-playback journey offer a relevant next action.
 - Core navigation and state changes remain understandable with Reduce Motion, VoiceOver, and large Dynamic Type enabled.

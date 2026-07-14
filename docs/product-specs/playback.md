@@ -60,8 +60,9 @@ The queue, interruption, route, restoration, removal, and first-release remote-c
 ### Inspect the queue
 
 1. The user opens the detailed player.
-2. Resona shows the current queue in its active traversal order and distinguishes the current item, unavailable items, and the active shuffle and repeat modes.
-3. Inspecting or dismissing the queue does not issue a transport command or change playback.
+2. The user opens Queue, which rises from the bottom as a separate system sheet.
+3. Resona shows the current queue in its active traversal order, distinguishes the current and unavailable items, and presents shuffle and repeat controls on this surface.
+4. Inspecting, changing a queue mode, or dismissing Queue does not issue an unrelated transport command.
 
 ## Behavioral requirements
 
@@ -126,7 +127,8 @@ The queue, interruption, route, restoration, removal, and first-release remote-c
 ## Acceptance criteria
 
 - Selecting an available song snapshots the current visible library order, makes the selected identity current, and does not let later sorting or filtering mutate that queue.
-- The detailed player shows the active traversal order, current and unavailable items, shuffle mode, and repeat mode; inspecting or dismissing it does not issue a transport command.
+- A Queue action on the detailed player presents a separate bottom sheet containing the active traversal order, current and unavailable items, shuffle mode, and repeat mode; opening or dismissing it does not issue a transport command.
+- The persistent current-song surface exposes Previous and Next alongside its primary transport control; those actions follow the same queue policy as the detailed player and system surfaces.
 - Once activated, Next and Previous actions follow the approved queue policy and keep UI state consistent with audible playback.
 - Play, Pause, Toggle Play/Pause, Next, Previous, and Change Playback Position from supported Lock Screen, Control Center, and headphone surfaces control the same playback state as in-app controls; unsupported commands remain disabled.
 - Now Playing metadata matches the audible song and clears or updates when playback state requires it.

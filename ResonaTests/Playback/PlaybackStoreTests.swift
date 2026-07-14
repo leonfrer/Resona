@@ -326,6 +326,103 @@ struct PlaybackStoreTests {
         #expect(store.phase == .playing)
     }
 
+    @Test func replacementKeepsCurrentItemVisibleWhileLookupIsPending() async {
+        let current = playbackItem(title: "Current")
+        let replacement = playbackItem(title: "Replacement")
+        let provider = ControlledPlaybackStoreTestProvider()
+        let store = PlaybackStore(
+            itemProvider: provider,
+            engine: PlaybackStoreTestEngine(),
+            audioSession: PlaybackStoreTestAudioSession(),
+            initialItem: current,
+            initialPhase: .paused,
+            initialDuration: 100
+        )
+
+        let selection = Task {
+            await store.select(songID: replacement.id)
+        }
+        await provider.waitForRequest(songID: replacement.id)
+
+        #expect(store.currentItem == current)
+        #expect(store.phase == .preparing)
+
+        await provider.resolve(songID: replacement.id, item: replacement)
+        await selection.value
+
+        #expect(store.currentItem == replacement)
+        #expect(store.phase == .playing)
+    }
+
+    @Test func queueNavigationKeepsCurrentItemVisibleWhileLookupIsPending() async {
+        let current = playbackItem(title: "Current")
+        let next = playbackItem(title: "Next")
+        let provider = ControlledPlaybackStoreTestProvider()
+        let store = PlaybackStore(
+            itemProvider: provider,
+            engine: PlaybackStoreTestEngine(),
+            audioSession: PlaybackStoreTestAudioSession()
+        )
+
+        let initialSelection = Task {
+            await store.select(
+                songID: current.id,
+                queueIDs: [current.id, next.id]
+            )
+        }
+        await provider.waitForRequest(songID: current.id)
+        await provider.resolve(songID: current.id, item: current)
+        await initialSelection.value
+
+        let navigation = Task {
+            await store.next()
+        }
+        await provider.waitForRequest(songID: next.id)
+
+        #expect(store.currentItem == current)
+        #expect(store.phase == .preparing)
+
+        await provider.resolve(songID: next.id, item: next)
+        await navigation.value
+
+        #expect(store.currentItem == next)
+        #expect(store.phase == .playing)
+    }
+
+    @Test func naturalAdvanceKeepsCurrentItemVisibleWhileLookupIsPending() async {
+        let current = playbackItem(title: "Current")
+        let next = playbackItem(title: "Next")
+        let provider = ControlledPlaybackStoreTestProvider()
+        let engine = PlaybackStoreTestEngine()
+        let store = PlaybackStore(
+            itemProvider: provider,
+            engine: engine,
+            audioSession: PlaybackStoreTestAudioSession()
+        )
+
+        let initialSelection = Task {
+            await store.select(
+                songID: current.id,
+                queueIDs: [current.id, next.id]
+            )
+        }
+        await provider.waitForRequest(songID: current.id)
+        await provider.resolve(songID: current.id, item: current)
+        await initialSelection.value
+
+        engine.emit(.finished(sessionID: engine.latestSessionID))
+        await provider.waitForRequest(songID: next.id)
+
+        #expect(store.currentItem == current)
+        #expect(store.phase == .preparing)
+
+        await provider.resolve(songID: next.id, item: next)
+        await settleAsyncEvents()
+
+        #expect(store.currentItem == next)
+        #expect(store.phase == .playing)
+    }
+
     @Test func removalInvalidationStopsAndClearsMatchingCurrentSong() async {
         let item = playbackItem(title: "Current")
         let engine = PlaybackStoreTestEngine(duration: 75)

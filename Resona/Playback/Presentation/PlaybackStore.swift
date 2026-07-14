@@ -177,10 +177,16 @@ final class PlaybackStore: PlaybackRemovalInvalidating {
     }
 
     func next() async {
+        guard pendingSelectionID == nil else {
+            return
+        }
         await navigateQueue(direction: .next, isNaturalEnd: false)
     }
 
     func previous() async {
+        guard pendingSelectionID == nil else {
+            return
+        }
         await navigateQueue(direction: .previous, isNaturalEnd: false)
     }
 
@@ -255,7 +261,6 @@ final class PlaybackStore: PlaybackRemovalInvalidating {
         pendingSelectionID = songID
         stopActivePlayback()
         if clearsCurrentItem {
-            currentItem = nil
             position = 0
             duration = nil
         }
@@ -589,16 +594,17 @@ final class PlaybackStore: PlaybackRemovalInvalidating {
                 position = duration
             }
             try? audioSession.deactivate()
-            phase = .stoppedAtEnd
             let finishedItemID = currentItem?.id
-            if queue?.candidateIDs(
+            let canAdvance = queue?.candidateIDs(
                 for: .next,
                 isNaturalEnd: true
-            ).isEmpty == false {
+            ).isEmpty == false
+            phase = canAdvance ? .preparing : .stoppedAtEnd
+            if canAdvance {
                 Task { [weak self] in
                     guard let self,
                           self.currentItem?.id == finishedItemID,
-                          self.phase == .stoppedAtEnd else {
+                          self.phase == .preparing else {
                         return
                     }
                     await self.navigateQueue(

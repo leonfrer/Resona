@@ -2,33 +2,61 @@ import SwiftUI
 
 struct PlayerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(PlaybackStore.self) private var playbackStore
     @State private var isSelectingFiles = false
+    @State private var presentedSheet: PlayerSheetDestination?
+    @AccessibilityFocusState private var focusedControl: PlayerFocusedControl?
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                if let item = playbackStore.currentItem {
-                    playerContent(item: item)
-                        .padding()
-                } else {
-                    ContentUnavailableView(
-                        "No Current Song",
-                        systemImage: "music.note",
-                        description: Text("Choose a song from your library to begin playback.")
-                    )
-                    .padding()
+        GeometryReader { geometry in
+            ZStack {
+                Color(uiColor: .systemBackground)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    ViewThatFits(in: .vertical) {
+                        playerSurface(size: geometry.size)
+
+                        ScrollView(showsIndicators: false) {
+                            playerSurface(size: geometry.size)
+                        }
+                    }
                 }
+                .safeAreaPadding(.bottom, 12)
             }
-            .navigationTitle("Now Playing")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Capsule()
+                    .fill(.secondary)
+                    .frame(width: 36, height: 5)
+                    .padding(.bottom, 6)
+                    .accessibilityHidden(true)
+            }
+            .modifier(
+                PlayerDismissalInteraction(
+                    size: geometry.size,
+                    isEnabled: presentedSheet == nil,
+                    reduceMotion: reduceMotion,
+                    dismiss: {
                         dismiss()
                     }
-                    .accessibilityIdentifier("player.done")
-                }
+                )
+            )
+            .accessibilityAction(.escape) {
+                dismiss()
+            }
+        }
+        .sheet(
+            item: $presentedSheet,
+            onDismiss: {
+                focusedControl = .queue
+            }
+        ) { destination in
+            switch destination {
+            case .queue:
+                PlayerQueueView()
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
         .audioImportPresentation(
@@ -46,43 +74,73 @@ struct PlayerView: View {
                 }
             }
         )
-        .task(id: playbackStore.queue?.baseOrder) {
-            await playbackStore.loadQueueItems()
-        }
-        .accessibilityIdentifier("player.sheet")
     }
 
-    private func playerContent(item: PlaybackItem) -> some View {
-        VStack(spacing: 24) {
+    @ViewBuilder
+    private func playerSurface(size: CGSize) -> some View {
+        let artworkDimension = max(
+            220,
+            min(size.width - 32, size.height * 0.48, 380)
+        )
+
+        Group {
+            if let item = playbackStore.currentItem {
+                playerContent(
+                    item: item,
+                    artworkDimension: artworkDimension
+                )
+            } else {
+                ContentUnavailableView(
+                    "No Current Song",
+                    systemImage: "music.note",
+                    description: Text(
+                        "Choose a song from your library to begin playback."
+                    )
+                )
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+    }
+
+    private func playerContent(
+        item: PlaybackItem,
+        artworkDimension: CGFloat
+    ) -> some View {
+        VStack(spacing: 22) {
             SongArtwork(
                 url: item.artworkURL,
-                dimension: 260,
-                cornerRadius: 20
+                dimension: artworkDimension,
+                cornerRadius: 18
+            )
+            .scaleEffect(playbackStore.phase == .playing ? 1.0 : 0.80)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : playbackStore.phase == .playing
+                        ? .spring(duration: 0.4, bounce: 0.55)
+                        : .linear(duration: 0.2),
+                value: playbackStore.phase == .playing
             )
 
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 Text(item.title)
                     .font(.title2.bold())
+                    .lineLimit(2)
                     .multilineTextAlignment(.center)
                 Text(item.artist ?? String(localized: "Unknown Artist"))
                     .font(.headline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
                     .multilineTextAlignment(.center)
                 Text(item.album ?? String(localized: "Unknown Album"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
                     .multilineTextAlignment(.center)
-                Label(
-                    playbackStore.phase.statusText,
-                    systemImage: playbackStore.phase.statusSystemImage
-                )
-                .font(.subheadline)
-                .padding(.top, 4)
             }
 
             progressControls
-
-            queueModeControls
 
             transportControls
 
@@ -90,43 +148,14 @@ struct PlayerView: View {
                 failureView(failure)
             }
 
-            queueSection
+            queueButton
         }
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }
 
-    private var queueModeControls: some View {
-        HStack(spacing: 12) {
-            Button(action: playbackStore.toggleShuffle) {
-                Label(
-                    playbackStore.queue?.isShuffleEnabled == true
-                        ? "Shuffle On"
-                        : "Shuffle Off",
-                    systemImage: playbackStore.queue?.isShuffleEnabled == true
-                        ? "shuffle.circle.fill"
-                        : "shuffle"
-                )
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("player.shuffle")
-
-            Button(action: playbackStore.cycleRepeatMode) {
-                Label(
-                    playbackStore.queue?.repeatMode.controlLabel
-                        ?? "Repeat Off",
-                    systemImage: playbackStore.queue?.repeatMode.systemImage
-                        ?? "repeat"
-                )
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("player.repeat")
-        }
-        .disabled(playbackStore.queue == nil)
-    }
-
     private var transportControls: some View {
-        HStack(spacing: 28) {
+        HStack(spacing: 34) {
             queueTransportButton(
                 label: "Previous",
                 systemImage: "backward.fill",
@@ -161,11 +190,13 @@ struct PlayerView: View {
         } label: {
             Label(label, systemImage: systemImage)
                 .labelStyle(.iconOnly)
-                .font(.title2.bold())
-                .frame(minWidth: 44, minHeight: 44)
+                .font(.system(size: 30, weight: .semibold))
+                .frame(width: 52, height: 52)
+                .contentShape(.circle)
         }
-        .buttonStyle(.bordered)
-        .disabled(!isEnabled || playbackStore.pendingSelectionID != nil)
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.3)
         .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
     }
@@ -175,26 +206,15 @@ struct PlayerView: View {
         if let duration = playbackStore.duration,
            duration.isFinite,
            duration > 0 {
-            VStack(spacing: 8) {
-                Slider(
-                    value: Binding(
-                        get: { min(playbackStore.position, duration) },
-                        set: playbackStore.seek
-                    ),
-                    in: 0 ... duration
-                )
-                .disabled(!playbackStore.canSeek)
-                .accessibilityLabel("Playback Position")
-                .accessibilityIdentifier("player.seek")
-
-                HStack {
-                    Text(playbackTimeText(playbackStore.position))
-                    Spacer()
-                    Text(playbackTimeText(duration))
-                }
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-            }
+            PlaybackScrubber(
+                position: min(playbackStore.position, duration),
+                duration: duration,
+                isEnabled: playbackStore.canSeek,
+                showsDisabledAppearance:
+                    playbackStore.phase != .preparing,
+                onSeek: playbackStore.seek
+            )
+            .accessibilityIdentifier("player.seek")
         } else {
             VStack(spacing: 8) {
                 ProgressView()
@@ -211,45 +231,68 @@ struct PlayerView: View {
 
     @ViewBuilder
     private var primaryTransportControl: some View {
+        if let primaryTransportAction {
+            transportButton(
+                label: primaryTransportAction.label,
+                systemImage: primaryTransportAction.systemImage,
+                isEnabled: primaryTransportAction.isEnabled,
+                action: primaryTransportAction.action
+            )
+        }
+    }
+
+    private var primaryTransportAction: PlayerTransportAction? {
         switch playbackStore.phase {
         case .playing:
-            transportButton(
+            PlayerTransportAction(
                 label: "Pause",
                 systemImage: "pause.fill",
                 action: playbackStore.pause
             )
         case .paused:
-            transportButton(
+            PlayerTransportAction(
                 label: "Play",
                 systemImage: "play.fill",
                 action: playbackStore.play
             )
         case .stoppedAtEnd:
-            transportButton(
+            PlayerTransportAction(
                 label: "Restart",
                 systemImage: "arrow.counterclockwise",
                 action: playbackStore.play
             )
         case .preparing:
-            ProgressView("Preparing…")
-                .accessibilityIdentifier("player.preparing")
+            PlayerTransportAction(
+                label: "Preparing",
+                systemImage: "pause.fill",
+                isEnabled: false,
+                action: {}
+            )
         case .idle, .failed:
-            EmptyView()
+            nil
         }
     }
 
     private func transportButton(
         label: LocalizedStringResource,
         systemImage: String,
+        isEnabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Label(label, systemImage: systemImage)
-                .font(.title3.bold())
-                .frame(minWidth: 120)
+            Image(systemName: systemImage)
+                .font(.system(size: 46, weight: .semibold))
+                .frame(width: 72, height: 72)
+                .contentShape(.circle)
+                .contentTransition(.symbolEffect(.replace))
+                .animation(
+                    reduceMotion ? nil : .snappy(duration: 0.24),
+                    value: systemImage
+                )
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.3)
         .accessibilityLabel(label)
         .accessibilityIdentifier("player.transport")
     }
@@ -273,7 +316,10 @@ struct PlayerView: View {
                     isSelectingFiles = true
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.plain)
+            .font(.headline)
+            .foregroundStyle(.tint)
+            .frame(minHeight: 44)
             .accessibilityIdentifier(
                 presentation.recoveryAction == .retry
                     ? "player.retry"
@@ -285,30 +331,289 @@ struct PlayerView: View {
         .background(.quaternary, in: .rect(cornerRadius: 16))
     }
 
-    @ViewBuilder
-    private var queueSection: some View {
-        if playbackStore.queue != nil {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Queue")
-                        .font(.headline)
-                    Spacer()
-                    if playbackStore.isLoadingQueueItems {
-                        ProgressView()
-                            .controlSize(.small)
-                            .accessibilityLabel("Loading queue")
-                    }
+    private var queueButton: some View {
+        Button {
+            presentedSheet = .queue
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "list.bullet")
+                Text("Queue")
+                    .font(.headline)
+                Spacer()
+                Image(systemName: "chevron.up")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .disabled(playbackStore.queue == nil)
+        .accessibilityFocused($focusedControl, equals: .queue)
+        .accessibilityIdentifier("player.queue.open")
+    }
+}
+
+private enum PlayerSheetDestination: String, Identifiable {
+    case queue
+
+    var id: String { rawValue }
+}
+
+private enum PlayerFocusedControl: Hashable {
+    case queue
+}
+
+private struct PlayerDismissalInteraction: ViewModifier {
+    @State private var drag = PlayerDismissalDrag()
+
+    let size: CGSize
+    let isEnabled: Bool
+    let reduceMotion: Bool
+    let dismiss: () -> Void
+
+    init(
+        size: CGSize,
+        isEnabled: Bool,
+        reduceMotion: Bool,
+        dismiss: @escaping () -> Void
+    ) {
+        self.size = size
+        self.isEnabled = isEnabled
+        self.reduceMotion = reduceMotion
+        self.dismiss = dismiss
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .offset(y: drag.offset)
+            .simultaneousGesture(dismissalGesture)
+    }
+
+    private var dismissalGesture: some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
+            .onChanged { value in
+                guard isEnabled else {
+                    return
+                }
+
+                if drag.intent == .undetermined {
+                    drag.intent = PlayerDismissalIntent(
+                        translation: value.translation
+                    )
+                }
+                guard drag.intent == .vertical else {
+                    return
+                }
+                drag.offset = max(0, value.translation.height)
+            }
+            .onEnded { value in
+                guard isEnabled else {
+                    resetDrag()
+                    return
+                }
+
+                let translation = value.translation
+                let predicted = value.predictedEndTranslation
+                let shouldDismiss =
+                    translation.height > max(120, size.height * 0.16)
+                    || predicted.height > size.height * 0.32
+                if drag.intent == .vertical && shouldDismiss {
+                    dismiss()
+                } else {
+                    resetDrag()
+                }
+            }
+    }
+
+    private func resetDrag() {
+        if reduceMotion {
+            drag = PlayerDismissalDrag()
+        } else {
+            withAnimation(.smooth(duration: 0.22)) {
+                drag = PlayerDismissalDrag()
+            }
+        }
+    }
+}
+
+private struct PlayerDismissalDrag {
+    var intent = PlayerDismissalIntent.undetermined
+    var offset: CGFloat = 0
+}
+
+private enum PlayerDismissalIntent {
+    case undetermined
+    case vertical
+    case rejected
+
+    init(translation: CGSize) {
+        self = translation.height > 0
+            && translation.height > abs(translation.width)
+            ? .vertical
+            : .rejected
+    }
+}
+
+private struct PlayerTransportAction {
+    let label: LocalizedStringResource
+    let systemImage: String
+    var isEnabled = true
+    let action: () -> Void
+}
+
+private struct PlaybackScrubber: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let position: TimeInterval
+    let duration: TimeInterval
+    let isEnabled: Bool
+    let showsDisabledAppearance: Bool
+    let onSeek: (TimeInterval) -> Void
+
+    @State private var dragPosition: TimeInterval?
+    @State private var dragStartPosition: TimeInterval?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            GeometryReader { geometry in
+                let width = max(geometry.size.width, 1)
+                let progress = min(max(displayPosition / duration, 0), 1)
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(.tertiary)
+
+                    Capsule()
+                        .fill(.primary)
+                        .frame(width: width * progress)
+                }
+                .frame(height: dragPosition == nil ? 4 : 10)
+                .frame(maxHeight: .infinity)
+                .contentShape(.rect)
+                .animation(
+                    reduceMotion ? nil : .snappy(duration: 0.16),
+                    value: dragPosition != nil
+                )
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            guard isEnabled else {
+                                resetDrag()
+                                return
+                            }
+                            let startPosition =
+                                dragStartPosition ?? position
+                            dragStartPosition = startPosition
+                            dragPosition = position(
+                                from: startPosition,
+                                horizontalTranslation: value.translation.width,
+                                width: width
+                            )
+                        }
+                        .onEnded { value in
+                            guard isEnabled else {
+                                resetDrag()
+                                return
+                            }
+                            defer { resetDrag() }
+                            guard abs(value.translation.width) >= 6,
+                                  abs(value.translation.width)
+                                    > abs(value.translation.height),
+                                  let dragStartPosition else {
+                                return
+                            }
+                            let target = position(
+                                from: dragStartPosition,
+                                horizontalTranslation: value.translation.width,
+                                width: width
+                            )
+                            onSeek(target)
+                        }
+                )
+            }
+
+            HStack {
+                Text(playbackTimeText(displayPosition))
+                Spacer()
+                Text(playbackTimeText(duration))
+            }
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+        }
+        .frame(height: 58)
+        .opacity(isEnabled || !showsDisabledAppearance ? 1 : 0.35)
+        .accessibilityElement()
+        .accessibilityLabel("Playback Position")
+        .accessibilityValue(playbackTimeText(displayPosition))
+        .accessibilityAdjustableAction { direction in
+            guard isEnabled else {
+                return
+            }
+            let step = min(max(duration / 20, 5), 30)
+            switch direction {
+            case .increment:
+                onSeek(min(position + step, duration))
+            case .decrement:
+                onSeek(max(position - step, 0))
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    private var displayPosition: TimeInterval {
+        dragPosition ?? position
+    }
+
+    private func position(
+        from startPosition: TimeInterval,
+        horizontalTranslation: CGFloat,
+        width: CGFloat
+    ) -> TimeInterval {
+        let progressDelta = TimeInterval(horizontalTranslation / width)
+        return min(max(startPosition + duration * progressDelta, 0), duration)
+    }
+
+    private func resetDrag() {
+        dragPosition = nil
+        dragStartPosition = nil
+    }
+}
+
+private struct PlayerQueueView: View {
+    @Environment(PlaybackStore.self) private var playbackStore
+
+    var body: some View {
+        let queuedItems = playbackStore.queuedItemsInTraversalOrder
+
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Queue")
+                    .font(.title2.bold())
+
+                queueModeControls
+
+                if playbackStore.isLoadingQueueItems {
+                    ProgressView("Loading Queue…")
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("player.queue.loading")
                 }
 
                 LazyVStack(spacing: 0) {
-                    ForEach(playbackStore.queuedItemsInTraversalOrder) { item in
+                    ForEach(Array(queuedItems.enumerated()), id: \.element.id) {
+                        index, item in
                         PlayerQueueRow(
                             item: item,
                             isCurrent: item.id == playbackStore.currentItem?.id
                         )
+
+                        if index < queuedItems.count - 1 {
+                            Divider()
+                                .padding(.leading, 48)
+                        }
                     }
                 }
-                .background(.quaternary, in: .rect(cornerRadius: 14))
 
                 if !playbackStore.isLoadingQueueItems,
                    let queue = playbackStore.queue,
@@ -318,11 +623,65 @@ struct PlayerView: View {
                             await playbackStore.loadQueueItems()
                         }
                     }
+                    .buttonStyle(.plain)
+                    .font(.headline)
+                    .foregroundStyle(.tint)
+                    .frame(minHeight: 44)
                     .accessibilityIdentifier("player.queue.reload")
                 }
             }
-            .accessibilityIdentifier("player.queue")
+            .frame(maxWidth: 620, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
+        .task(id: playbackStore.queue?.baseOrder) {
+            await playbackStore.loadQueueItems()
+        }
+    }
+
+    private var queueModeControls: some View {
+        HStack(spacing: 36) {
+            Button(action: playbackStore.toggleShuffle) {
+                VStack(spacing: 6) {
+                    Image(
+                        systemName: playbackStore.queue?.isShuffleEnabled == true
+                            ? "shuffle.circle.fill"
+                            : "shuffle"
+                    )
+                    .font(.title2)
+                    Text(
+                        playbackStore.queue?.isShuffleEnabled == true
+                            ? "Shuffle On"
+                            : "Shuffle Off"
+                    )
+                    .font(.caption)
+                }
+                .frame(minWidth: 88, minHeight: 52)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("player.shuffle")
+
+            Button(action: playbackStore.cycleRepeatMode) {
+                VStack(spacing: 6) {
+                    Image(
+                        systemName: playbackStore.queue?.repeatMode.systemImage
+                            ?? "repeat"
+                    )
+                    .font(.title2)
+                    Text(
+                        playbackStore.queue?.repeatMode.controlLabel
+                            ?? "Repeat Off"
+                    )
+                    .font(.caption)
+                }
+                .frame(minWidth: 88, minHeight: 52)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("player.repeat")
+        }
+        .disabled(playbackStore.queue == nil)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -392,6 +751,40 @@ private extension PlaybackRepeatMode {
 #Preview("Playing") {
     PlayerView()
         .playbackPreviewEnvironment(phase: .playing, position: 42, duration: 180)
+}
+
+#Preview("No Current Song") {
+    PlayerView()
+        .playbackPreviewEnvironment(item: nil, phase: .idle)
+}
+
+#Preview("Dark Mode") {
+    PlayerView()
+        .playbackPreviewEnvironment(
+            phase: .paused,
+            position: 42,
+            duration: 180
+        )
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Accessibility Text") {
+    PlayerView()
+        .playbackPreviewEnvironment(
+            phase: .paused,
+            position: 42,
+            duration: 180
+        )
+        .environment(\.dynamicTypeSize, .accessibility3)
+}
+
+#Preview("Queue") {
+    PlayerQueueView()
+        .playbackPreviewEnvironment(
+            phase: .paused,
+            position: 42,
+            duration: 180
+        )
 }
 
 #Preview("Stopped at End") {

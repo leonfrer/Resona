@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented
+Active
 
 ## User outcome
 
@@ -42,7 +42,7 @@ Users can start an available imported song, reliably control it in Resona, and c
 4. The user plays, pauses, or seeks within the current song.
 5. The player UI reflects the state of audible playback.
 
-The library's current-song affordance presents the detailed player in a sheet without issuing a playback command. Dismissing the sheet returns to the same library context without changing playback.
+The library's current-song affordance presents the detailed player as a full-surface media view without issuing a playback command. Pulling the player downward returns to the same library context without changing playback.
 
 ## Behavioral requirements
 
@@ -52,6 +52,8 @@ The library's current-song affordance presents the detailed player in a sheet wi
 - Selecting another available song replaces the current song and begins the newly selected song from its start.
 - Play, pause, and seek commands are safe when no valid current song exists and must not create a false playing state.
 - Playback failures must not modify or invalidate the library song.
+- The detailed player omits routine Playing and Paused status text. Its icon-only primary transport control switches between accessible Pause and Play actions without visible Play or Pause text.
+- The detailed player has no Done button. Its transport buttons have transparent backgrounds, and its thumb-free capsule scrubber expands while interacting while preserving a comfortable touch target and accessible adjustment behavior.
 - A missing, inaccessible, corrupted, or unsupported managed resource produces an actionable failure.
 - A missing or inaccessible managed resource reports a localized equivalent of “Song Unavailable” and offers Re-import. It does not remove or otherwise modify the library song.
 - A managed resource that can be opened but is corrupted, unsupported, or cannot be decoded reports a localized equivalent of “Song Can’t Be Played” and offers Re-import.
@@ -83,7 +85,9 @@ The library's current-song affordance presents the detailed player in a sheet wi
 
 - Selecting an available library song starts the correct audio or presents an actionable error.
 - Selecting a different available song replaces the current song and starts it from the beginning.
+- While a replacement song is being resolved, the existing current-song affordance remains stable instead of disappearing and reappearing.
 - Play, pause, and seek keep visible state consistent with audible playback.
+- The detailed player fills the app surface, dismisses downward without changing playback, and communicates Play or Pause through the primary transport symbol and accessible label rather than redundant visible text.
 - A missing or unreadable managed resource does not change library data or leave playback claiming success.
 - Missing, inaccessible, corrupted, and unsupported resource failures offer Re-import; transient startup and playback failures offer Try Again.
 - Seeking is disabled while preparing or while duration is unknown, and an enabled seek is clamped to the known playable range.
