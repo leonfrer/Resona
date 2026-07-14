@@ -15,7 +15,7 @@ This versioned tracker makes known compromises legible and actionable without tu
 
 | ID | Area | Summary | Owner | Cleanup trigger | Last reviewed |
 | --- | --- | --- | --- | --- | --- |
-| TD-001 | Library persistence | Retained scaffold `Item` model and V0 schema | Library persistence | After Library Management's additive schema and migration are implemented and verified | 2026-07-13 |
+| TD-001 | Library persistence | Retained scaffold `Item` model and V0 schema | Library persistence | After Library Management is complete and its additive schema and migration are verified | 2026-07-14 |
 
 ## TD-001 — Retained scaffold `Item`
 
@@ -38,7 +38,7 @@ The debt adds an irrelevant persisted model to every schema, expands migration r
 
 ### Cleanup trigger
 
-After Library Management's next additive schema is implemented and its migration path is verified, create a focused execution plan for removing `Item` in the following schema version.
+After Library Management is complete and its additive schema and migration path are verified, create a focused execution plan for removing `Item` in the following schema version. Schema V2 and its V0/V1 migration coverage were added on 2026-07-14; the trigger remains gated on completion of the full Library Management slice.
 
 ### Exit criteria
 

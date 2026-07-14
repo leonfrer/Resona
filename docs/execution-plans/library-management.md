@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready for implementation
+In progress — persistence milestone complete
 
 ## Outcome
 
@@ -75,8 +75,10 @@ Integration will extend the same boundary when queues become Active.
 - Confirmation is not the durable acceptance point. A removal becomes accepted
   only when its pending-removal record is saved atomically with removal of the
   active song record.
-- Before that transaction, block new selection of the identity and invalidate
-  any in-flight or current Basic Playback reference to it.
+- Before that transaction, reserve the shared mutation gate, then block new
+  selection of the identity and invalidate any in-flight or current Basic
+  Playback reference to it. If the gate is already busy, leave playback and the
+  library unchanged.
 - If the transaction cannot be saved, the removal was not accepted. Unblock the
   identity, keep the song in the library, and present a retryable failure. Do not
   claim that the song was removed.
@@ -151,9 +153,10 @@ Add `ResonaSchemaV2` version 3.0.0 containing `Item`, `LibrarySongRecord`, and
 V1-to-V2 stage. Retain V0 and V1 so existing stores migrate through the complete
 non-destructive chain.
 
-Before adopting V2, add an on-disk migration test that creates a populated V1
-store, opens it through V2, and verifies that existing `Item` and active song
-records remain intact. If adding the removal model cannot migrate without
+Before adopting V2, add on-disk migration tests for every supported prior
+schema. Open an actual V0 store through the complete V0-to-V1-to-V2 chain and an
+actual populated V1 store through V2. Verify that existing `Item` and active
+song records remain intact. If adding the removal model cannot migrate without
 deleting or recreating data, stop and revise the plan; never use store deletion
 as fallback.
 
@@ -206,10 +209,12 @@ the same repository and directories. Introduce a small actor-owned
 
 The gate records one active mutation token across awaited work. Beginning a
 second mutation returns a typed busy result; it does not interleave file commits,
-record changes, or reconciliation. Token release is guaranteed with `defer` on
-success, failure, and cancellation. Keep the existing `AudioImportService`
-single-import protection; the shared gate adds cross-service serialization
-rather than replacing import-session ownership.
+record changes, reconciliation, or playback invalidation for a removal that
+cannot proceed. Removal reserves the token before invalidating playback and
+holds it through the repository transaction and managed-resource cleanup. Token
+release is guaranteed with `defer` on success, failure, and cancellation. Keep
+the existing `AudioImportService` single-import protection; the shared gate adds
+cross-service serialization rather than replacing import-session ownership.
 
 Library presentation normally prevents simultaneous import and removal because
 import progress is modal. The gate remains required for correctness across
@@ -220,10 +225,11 @@ changes.
 
 For a confirmed song identity:
 
-1. `LibraryStore` asks the playback-removal boundary to block that identity.
+1. `LibraryRemovalService` reserves the shared mutation gate. If another
+   mutation owns it, return Busy before changing Library or Playback state.
+2. `LibraryStore` asks the playback-removal boundary to block that identity.
    `PlaybackStore` invalidates matching selection generation work and stops and
    clears the matching current item. An unrelated current item is unchanged.
-2. `LibraryRemovalService` acquires the shared mutation gate.
 3. The repository atomically inserts `LibrarySongRemovalRecord`, deletes the
    active `LibrarySongRecord`, and saves.
 4. If step 3 fails, the service releases the gate and returns Not Accepted.
@@ -337,7 +343,7 @@ ready and avoid assembling sentences from fragments.
 | Failure boundary | User-visible result | Durable state |
 | --- | --- | --- |
 | Playback invalidation | Do not begin removal; keep the row and offer Try Again if the boundary cannot establish safety. | Active song remains. |
-| Mutation already active | Keep the row and ask the user to try again after current work finishes. | No removal record. |
+| Mutation already active | Leave playback unchanged, keep the row, and ask the user to try again after current work finishes. | No removal record. |
 | Begin-removal persistence save | “Song Couldn’t Be Removed” with Try Again. | Active song remains; no tombstone. |
 | Audio or artwork cleanup | Song stays absent; identify it and offer Try Again. | Tombstone remains. |
 | Final tombstone save | Song stays absent; identify it and offer Try Again. | Tombstone remains; missing files make retry idempotent. |
@@ -353,13 +359,13 @@ metadata contents, or managed audio bytes.
 
 | Area | Required coverage |
 | --- | --- |
-| V1-to-V2 migration | Existing `Item` and populated song records survive the additive on-disk migration. |
+| V0/V1-to-V2 migration | An actual V0 store survives the complete migration chain, and an actual populated V1 store preserves existing `Item` and song records. |
 | Repository transaction | Begin removal atomically creates one tombstone and removes one active record; save failure leaves the active record intact; missing and repeated identities are deterministic. |
 | Repository filtering | Active fetch, stable-ID lookup, and duplicate candidates exclude tombstones; resource references include active and pending-removal files. |
 | Managed cleanup | Audio and artwork delete together when present; either may already be missing; invalid filenames cannot escape managed roots; partial failure is safe to retry. |
 | Mutation gate | Import, removal, retry, and reconciliation never interleave; release occurs after success, failure, and cancellation. |
 | Removal service | Available and unavailable removals, begin failure, partial cleanup, finalization failure, explicit retry, and launch retry produce the documented outcomes. |
-| Playback invalidation | Current removal stops and clears state; unrelated removal preserves playback; blocked selection is rejected; stale resolution cannot recreate a removed item; rejected persistence unblocks future selection. |
+| Playback invalidation | Current removal stops and clears state; unrelated removal preserves playback; a busy mutation leaves playback unchanged; blocked selection is rejected; stale resolution cannot recreate a removed item; rejected persistence unblocks future selection. |
 | LibraryStore | Confirmation execution, progress, authoritative refresh, empty transition, failure queue, and Try Again remain deterministic. |
 | Presentation text | Current and non-current confirmations describe the correct consequences; cleanup failures map to non-technical actionable text. |
 
@@ -480,3 +486,25 @@ the existing store, weakening accepted-removal durability, implementing queue
 state, changing a capability, or touching the user's original external file must
 stop for approval and update the owning product specification or architecture
 document first.
+
+## Implementation record
+
+### 2026-07-14 — Persistence milestone
+
+- Added immutable pending-removal domain values and typed begin-removal results.
+- Added `ResonaSchemaV2` and `LibrarySongRemovalRecord` through the additive
+  V0-to-V1-to-V2 migration chain.
+- Added atomic begin-removal, deterministic pending-removal fetch,
+  idempotent finalization, active-query filtering, and combined owned-resource
+  references to `SwiftDataLibraryRepository`.
+- Verified that injected begin-removal save failure rolls back both the active
+  deletion and tombstone insertion, while finalization failure preserves the
+  tombstone for retry.
+- Verified actual V0-to-V2 and populated V1-to-V2 on-disk migrations.
+- `./scripts/test-unit.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
+- `./scripts/check.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5, after
+  removing new concurrency warnings.
+
+Implementation sequence 1 is complete. Mutation serialization, cleanup, and
+reconciliation remain next; no removal UI or managed-resource deletion is wired
+yet.

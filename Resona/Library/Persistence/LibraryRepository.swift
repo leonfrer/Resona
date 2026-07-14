@@ -9,6 +9,9 @@ nonisolated protocol LibraryRepository: Sendable {
     ) async throws -> [LibraryDuplicateCandidate]
     func insert(_ draft: LibrarySongDraft) async throws
     func restore(_ draft: LibrarySongDraft) async throws
+    func beginRemoval(id: UUID) async throws -> LibraryRemovalBeginning
+    func pendingRemovals() async throws -> [LibrarySongRemoval]
+    func finalizeRemoval(id: UUID) async throws
 }
 
 extension LibraryRepository {

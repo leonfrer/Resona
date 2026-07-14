@@ -6,7 +6,7 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct ResonaMigrationTests {
-    @Test func migratesCurrentScaffoldStoreWithoutLosingItems() throws {
+    @Test func migratesV0StoreThroughCompleteChainWithoutLosingItems() throws {
         let directory = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         let storeURL = directory.appending(path: "Resona.store")
@@ -19,7 +19,7 @@ struct ResonaMigrationTests {
         }
         let timestamp = Date(timeIntervalSince1970: 1_234_567)
 
-        try createCurrentScaffoldStore(at: storeURL, timestamp: timestamp)
+        try createV0Store(at: storeURL, timestamp: timestamp)
 
         let migratedContainer = try ResonaModelContainer.make(storeURL: storeURL)
         let context = ModelContext(migratedContainer)
@@ -29,6 +29,42 @@ struct ResonaMigrationTests {
         #expect(items.count == 1)
         #expect(items[0].timestamp == timestamp)
         #expect(songs.isEmpty)
+    }
+
+    @Test func migratesPopulatedV1StoreWithoutLosingItemsOrSongs() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let storeURL = directory.appending(path: "Resona.store")
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let timestamp = Date(timeIntervalSince1970: 2_345_678)
+        let songID = UUID()
+
+        try createV1Store(
+            at: storeURL,
+            timestamp: timestamp,
+            songID: songID
+        )
+
+        let migratedContainer = try ResonaModelContainer.make(storeURL: storeURL)
+        let context = ModelContext(migratedContainer)
+        let items = try context.fetch(FetchDescriptor<Item>())
+        let songs = try context.fetch(FetchDescriptor<LibrarySongRecord>())
+        let removals = try context.fetch(
+            FetchDescriptor<LibrarySongRemovalRecord>()
+        )
+
+        #expect(items.count == 1)
+        #expect(items[0].timestamp == timestamp)
+        #expect(songs.count == 1)
+        #expect(songs[0].id == songID)
+        #expect(songs[0].title == "V1 Song")
+        #expect(removals.isEmpty)
     }
 
     @Test func preservesSongIdentityAcrossContainerRecreation() async throws {
@@ -60,11 +96,11 @@ struct ResonaMigrationTests {
         #expect(songs[0].title == "Persistent Song")
     }
 
-    private func createCurrentScaffoldStore(
+    private func createV0Store(
         at storeURL: URL,
         timestamp: Date
     ) throws {
-        let schema = Schema([Item.self])
+        let schema = Schema(versionedSchema: ResonaSchemaV0.self)
         let configuration = ModelConfiguration(
             "Resona",
             schema: schema,
@@ -76,6 +112,39 @@ struct ResonaMigrationTests {
         )
         let context = ModelContext(container)
         context.insert(Item(timestamp: timestamp))
+        try context.save()
+    }
+
+    private func createV1Store(
+        at storeURL: URL,
+        timestamp: Date,
+        songID: UUID
+    ) throws {
+        let schema = Schema(versionedSchema: ResonaSchemaV1.self)
+        let configuration = ModelConfiguration(
+            "Resona",
+            schema: schema,
+            url: storeURL
+        )
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(container)
+        context.insert(Item(timestamp: timestamp))
+        context.insert(
+            LibrarySongRecord(
+                id: songID,
+                contentDigest: "v1-content",
+                byteCount: 512,
+                managedAudioFilename: "v1-song.m4a",
+                title: "V1 Song",
+                artist: "Artist",
+                album: "Album",
+                durationSeconds: 120,
+                managedArtworkFilename: "v1-song.jpg"
+            )
+        )
         try context.save()
     }
 

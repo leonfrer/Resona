@@ -206,6 +206,9 @@ private actor PresentationTestRepository: LibraryRepository {
 
     func insert(_ draft: LibrarySongDraft) {}
     func restore(_ draft: LibrarySongDraft) {}
+    func beginRemoval(id: UUID) -> LibraryRemovalBeginning { .missing }
+    func pendingRemovals() -> [LibrarySongRemoval] { [] }
+    func finalizeRemoval(id: UUID) {}
 }
 
 private actor PresentationTestAudioImporter: AudioImporting {
