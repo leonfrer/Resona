@@ -55,14 +55,22 @@ private struct AppDependencies {
             modelContainer: modelContainer,
             resourceResolver: mediaStore
         )
+        let mutationGate = LibraryMutationGate()
+        let removalService = LibraryRemovalService(
+            repository: repository,
+            mediaStore: mediaStore,
+            mutationGate: mutationGate
+        )
         let audioImporter = AudioImportService(
             repository: repository,
-            mediaStore: mediaStore
+            mediaStore: mediaStore,
+            mutationGate: mutationGate,
+            removalReconciler: removalService
         )
         let libraryStore = LibraryStore(
             repository: repository,
             prepareForInitialLoad: {
-                try await audioImporter.reconcileLibrary()
+                _ = try await removalService.reconcileLibrary()
             }
         )
         let playbackStore = PlaybackStore(

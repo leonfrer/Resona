@@ -8,6 +8,8 @@ actor AudioImportService {
     private let validator: any AudioValidating
     private let metadataReader: any AudioMetadataReading
     private let metadataNormalizer: AudioMetadataNormalizer
+    private let mutationGate: LibraryMutationGate
+    private let removalReconciler: (any LibraryRemovalReconciling)?
     private let makeUUID: @Sendable () -> UUID
 
     private var activeTask: Task<Void, Never>?
@@ -23,6 +25,8 @@ actor AudioImportService {
         metadataReader: any AudioMetadataReading =
             AVFoundationAudioMetadataReader(),
         metadataNormalizer: AudioMetadataNormalizer = AudioMetadataNormalizer(),
+        mutationGate: LibraryMutationGate = LibraryMutationGate(),
+        removalReconciler: (any LibraryRemovalReconciling)? = nil,
         makeUUID: @escaping @Sendable () -> UUID = UUID.init
     ) {
         self.repository = repository
@@ -32,6 +36,8 @@ actor AudioImportService {
         self.validator = validator
         self.metadataReader = metadataReader
         self.metadataNormalizer = metadataNormalizer
+        self.mutationGate = mutationGate
+        self.removalReconciler = removalReconciler
         self.makeUUID = makeUUID
     }
 
@@ -41,6 +47,9 @@ actor AudioImportService {
         guard activeTask == nil else {
             throw AudioImportServiceError.operationInProgress
         }
+        guard case let .acquired(reservation) = await mutationGate.acquire() else {
+            throw AudioImportServiceError.operationInProgress
+        }
 
         let (stream, continuation) = AsyncStream<ImportEvent>.makeStream()
         let operationID = makeUUID()
@@ -48,6 +57,7 @@ actor AudioImportService {
             await runImport(
                 sourceURLs: sourceURLs,
                 operationID: operationID,
+                reservation: reservation,
                 continuation: continuation
             )
         }
@@ -67,13 +77,23 @@ actor AudioImportService {
     }
 
     func reconcileLibrary() async throws {
-        let references = try await repository.resourceReferences()
-        try await mediaStore.reconcile(references: references)
+        guard case let .acquired(reservation) = await mutationGate.acquire() else {
+            throw AudioImportServiceError.operationInProgress
+        }
+
+        do {
+            try await reconcile(using: reservation)
+            await mutationGate.release(reservation)
+        } catch {
+            await mutationGate.release(reservation)
+            throw error
+        }
     }
 
     private func runImport(
         sourceURLs: [URL],
         operationID: UUID,
+        reservation: LibraryMutationReservation,
         continuation: AsyncStream<ImportEvent>.Continuation
     ) async {
         let totalCount = sourceURLs.count
@@ -87,7 +107,9 @@ actor AudioImportService {
             )
         )
 
-        let reconciliationFailure = await reconcileBeforeImport()
+        let reconciliationFailure = await reconcileBeforeImport(
+            using: reservation
+        )
         var completedCount = 0
         for sourceURL in sourceURLs {
             let displayName = sourceDisplayName(for: sourceURL)
@@ -137,25 +159,51 @@ actor AudioImportService {
         continuation.yield(.finished)
         continuation.finish()
         activeTask = nil
+        await mutationGate.release(reservation)
     }
 
-    private func reconcileBeforeImport() async -> ImportFailureReason? {
+    private func reconcileBeforeImport(
+        using reservation: LibraryMutationReservation
+    ) async -> ImportFailureReason? {
+        do {
+            try await reconcile(using: reservation)
+            return nil
+        } catch is CancellationError {
+            return nil
+        } catch let error as LibraryRemovalReconciliationError {
+            switch error {
+            case .persistenceFailed:
+                return .persistenceFailed
+            case .managedStorageFailed:
+                return .managedStorageFailed
+            }
+        } catch {
+            return .managedStorageFailed
+        }
+    }
+
+    private func reconcile(
+        using reservation: LibraryMutationReservation
+    ) async throws {
+        if let removalReconciler {
+            _ = try await removalReconciler.reconcile(using: reservation)
+            return
+        }
+
         let references: LibraryResourceReferences
         do {
             references = try await repository.resourceReferences()
         } catch is CancellationError {
-            return nil
+            throw CancellationError()
         } catch {
-            return .persistenceFailed
+            throw LibraryRemovalReconciliationError.persistenceFailed
         }
-
         do {
             try await mediaStore.reconcile(references: references)
-            return nil
         } catch is CancellationError {
-            return nil
+            throw CancellationError()
         } catch {
-            return .managedStorageFailed
+            throw LibraryRemovalReconciliationError.managedStorageFailed
         }
     }
 
