@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress — persistence milestone complete
+In progress — mutation cleanup milestone complete
 
 ## Outcome
 
@@ -505,6 +505,26 @@ document first.
 - `./scripts/check.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5, after
   removing new concurrency warnings.
 
-Implementation sequence 1 is complete. Mutation serialization, cleanup, and
-reconciliation remain next; no removal UI or managed-resource deletion is wired
-yet.
+### 2026-07-14 — Mutation cleanup milestone
+
+- Added `LibraryMutationGate` reservations shared by import, removal, retry, and
+  reconciliation, including busy outcomes and release after success, failure,
+  and cancellation.
+- Added `LibraryRemovalService` with durable begin-removal coordination,
+  idempotent audio and artwork cleanup, tombstone finalization, explicit retry,
+  and typed pending-cleanup issues.
+- Ordered launch and pre-import reconciliation so deterministic pending removals
+  are retried before remaining resource references protect tombstone-owned files
+  during general orphan cleanup.
+- Composed the gate and removal service at app launch; initial Library loading
+  now runs pending-removal reconciliation before fetching active songs.
+- Added deterministic coverage for busy mutations, unavailable resources,
+  begin and finalization failures, partial cleanup, explicit retry, launch order,
+  cross-service import serialization, and cancellation before and after durable
+  acceptance.
+- `./scripts/build.sh`: passed for the generic iOS Simulator destination.
+- `./scripts/test-unit.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
+- `./scripts/check.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
+
+Implementation sequence 2 is complete. Basic Playback invalidation is next;
+removal presentation and playback selection blocking are not wired yet.

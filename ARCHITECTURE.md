@@ -10,11 +10,11 @@ The product direction is described in `README.md`. A feature listed there is pla
 
 ## Current implementation
 
-The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, and the persistence milestone of Library Management in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified; song-removal services and presentation are not implemented yet:
+The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, and the persistence and cleanup milestones of Library Management in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified; playback invalidation and user-facing removal are not implemented yet:
 
 - `ResonaApp` is the composition root.
 - It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
-- It constructs the managed-media store, Library repository, audio-import service, playback item provider, AVFoundation playback adapters, shared `LibraryStore`, and application-lifetime `PlaybackStore`, then installs presentation dependencies in the SwiftUI environment.
+- It constructs the managed-media store, Library repository, shared mutation gate, audio-import and removal services, playback item provider, AVFoundation playback adapters, shared `LibraryStore`, and application-lifetime `PlaybackStore`, then installs presentation dependencies in the SwiftUI environment.
 - Schema V0 represents the original `Item`-only store. Schema V1 adds `LibrarySongRecord`, and Schema V2 adds `LibrarySongRemovalRecord`, while retaining `Item` through a verified lightweight V0-to-V1-to-V2 migration chain.
 - `ContentView` hosts one `NavigationStack` rooted at `LibraryView`; it no longer presents or mutates scaffold `Item` values.
 - `Item` contains only a timestamp.
@@ -22,9 +22,11 @@ The repository now contains the Import to Songs List slice, the implemented Basi
 - `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`, including fresh stable-ID lookup for playback and the atomic active-record-to-pending-removal transaction. Pending removals are excluded from active lookup and duplicate matching while retaining managed-resource ownership until idempotent finalization. SwiftData records and `ModelContext` do not cross that boundary.
 - `ManagedMediaStore` is an actor that owns versioned app-managed Audio, Artwork, and Staging directories. It provides staging locations, same-volume moves into identity-derived final filenames, complete byte comparison, availability resolution, explicit cleanup, and reconciliation of abandoned or unreferenced files.
 - The Library import boundary now includes complete-file SHA-256 fingerprinting, security-scoped and coordinated source reads, content-based container and codec validation, canonical metadata and artwork normalization, and typed per-file outcomes.
-- `AudioImportService` is an actor that serializes one import operation, reconciles managed storage before work, processes selected files sequentially, cooperatively cancels unfinished files, reports progress through an async stream, and supports one-file retry.
+- `LibraryMutationGate` is an actor that grants one explicit reservation across import, removal, retry, and reconciliation work. Busy operations return without interleaving repository or managed-storage mutations, and reservations are released after success, failure, or cancellation.
+- `LibraryRemovalService` is an actor that establishes durable removal intent, deletes managed audio and artwork idempotently, finalizes tombstones, supports targeted retry, and reconciles pending removals before general orphan cleanup.
+- `AudioImportService` is an actor that serializes one import operation, holds the shared mutation reservation through its async stream, runs ordered removal and managed-storage reconciliation before work, processes selected files sequentially, cooperatively cancels unfinished files, reports progress, and supports one-file retry.
 - Import coordination confirms available duplicates with a complete byte comparison, restores unavailable matching records without changing identity, and removes newly committed resources when persistence fails.
-- The repository exposes the active managed filenames needed for reconciliation without exposing SwiftData records.
+- The repository exposes the active and pending-removal managed filenames needed for reconciliation without exposing SwiftData records.
 - `LibraryStore` owns library loading state and publishes immutable, deterministically sorted song snapshots to presentation. Its first load runs launch reconciliation before fetching songs.
 - `LibraryView` presents the Songs List, offline-copy empty state, loading and recovery states, toolbar import action, reusable system multi-file importer, available-row playback actions, and the persistent current-song surface.
 - `ImportSessionModel` consumes import events and owns one operation's progress, results, cancellation, Choose Files recovery, and one-file retry. `ImportSheet` remains presented while active and owns its actions and dismissal.
@@ -33,14 +35,15 @@ The repository now contains the Import to Songs List slice, the implemented Basi
 - `PlaybackStore` is the sole live owner of the current item, mutually exclusive phase, elapsed position, playable duration, failure, selection generation, and active engine session. It serializes transport commands and ignores stale selection results and tagged engine events.
 - `AVAudioPlayerEngine` owns one local `AVAudioPlayer`, its retained delegate bridge, tagged event stream, and position publication. `AVAudioSessionController` configures the playback category, defers explicit activation until playback, deactivates on silent states, and reports interruption start.
 - `CurrentSongBar` and item-driven `PlayerView` render shared Playback state and send commands without creating a second player or changing transport merely through presentation. Resource recovery reuses the Library import presentation.
-- Queue, user-facing removal coordination and cleanup, Now Playing metadata, remote commands, restoration, and full interruption or route-change policy do not exist yet.
+- Queue, playback invalidation for removal, user-facing removal coordination, Now Playing metadata, remote commands, restoration, and full interruption or route-change policy do not exist yet.
 
 ### Current runtime flow
 
 ```text
 ResonaApp
   -> creates V2 versioned ModelContainer, ManagedMediaStore,
-     SwiftDataLibraryRepository, AudioImportService, LibraryStore,
+     SwiftDataLibraryRepository, LibraryMutationGate,
+     AudioImportService, LibraryRemovalService, LibraryStore,
      LibraryPlaybackItemProvider, AVAudioPlayerEngine,
      AVAudioSessionController, and PlaybackStore
   -> migrates an existing Item-only store without deleting Item data
@@ -89,8 +92,15 @@ ManagedMediaStore
   -> resolves only complete regular managed resources
   -> removes abandoned staging work and unreferenced final resources
 
+LibraryMutationGate / LibraryRemovalService
+  -> serialize import, removal, retry, and reconciliation mutations
+  -> retry pending-removal cleanup in deterministic identity order
+  -> preserve failed cleanup ownership in durable tombstones
+  -> reconcile genuinely unreferenced resources only after pending removals
+
 AudioImportService
-  -> reconciles repository references with managed storage
+  -> holds one shared mutation reservation across an import operation
+  -> runs ordered pending-removal and managed-storage reconciliation
   -> coordinates and fingerprints external source reads
   -> validates staged audio and normalizes metadata
   -> confirms duplicates or restores unavailable identities
@@ -106,11 +116,13 @@ Resona/
 ├── ContentView.swift              Application navigation root
 ├── Item.swift                     Retained scaffold model and V0 schema
 ├── Library/
+│   ├── Coordination/              Shared Library mutation serialization
 │   ├── Domain/                    Sendable song, identity, availability, and sorting values
 │   ├── Import/                    Source access, fingerprinting, typed results, and import coordination
 │   ├── Metadata/                  AVFoundation validation/reading and canonical normalization
-│   ├── Persistence/               V1 record, migration plan, repository, and resource boundary
+│   ├── Persistence/               V2 records, migration plan, repository, and resource boundary
 │   ├── Presentation/              Library state, Songs List, reusable import presentation, and rows
+│   ├── Removal/                   Removal cleanup, retry, and ordered reconciliation
 │   └── Storage/                   Managed resource staging, commit, cleanup, and reconciliation
 ├── Playback/
 │   ├── Domain/                    Current item, phase, and typed failure values
@@ -204,15 +216,15 @@ These boundaries are invariants; the exact types, folder layout, and use of prot
 - The app composition layer owns the lifetime of shared services.
 - SwiftData is the current persistence technology, but `ModelContext` should not become a general-purpose dependency passed through unrelated features.
 
-The existing `Item` model remains scaffold data, not a music-library model. It is retained in schema V1 so the first library migration is additive and non-destructive. Removing it requires a separately approved migration decision.
+The existing `Item` model remains scaffold data, not a music-library model. It is retained through schema V2 so the migration chain remains additive and non-destructive. Removing it requires a separately approved migration decision.
 
-`LibrarySongRecord` is the active persisted music-library model. `LibrarySongRemovalRecord` is the minimal V2 pending-cleanup intent containing the former identity, display title, and managed filenames. `SwiftDataLibraryRepository` owns their `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth. Removal services, managed-resource cleanup, launch retry, and user-facing removal remain unimplemented.
+`LibrarySongRecord` is the active persisted music-library model. `LibrarySongRemovalRecord` is the minimal V2 pending-cleanup intent containing the former identity, display title, and managed filenames. `SwiftDataLibraryRepository` owns their `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth. `LibraryRemovalService` owns managed-resource cleanup, tombstone finalization, explicit retry, and launch reconciliation. Playback invalidation and user-facing removal remain unimplemented.
 
-`ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's active filename snapshot and removes abandoned staging work plus unreferenced final resources; it never treats file presence as a persisted library record.
+`ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's combined active and pending-removal filename snapshot and removes abandoned staging work plus genuinely unreferenced final resources; it never treats file presence as a persisted library record or bypasses tombstone-owned cleanup.
 
 The managed root currently lives in the app's Application Support directory. Audio and artwork are durable user data; Staging is temporary recovery state. Product capacity, backup, free-space, and responsiveness expectations are owned by [Quality Attributes](docs/product-specs/quality-attributes.md). Concrete storage mechanics belong here only after they are implemented.
 
-`AudioImportService` owns the lifetime and cancellation of one active import task. It publishes immutable progress and terminal per-file outcomes through an async stream. `ImportSessionModel` consumes those events on the main actor and refreshes `LibraryStore` after committed results.
+`LibraryMutationGate` owns one cross-service mutation reservation. `AudioImportService` owns the lifetime and cancellation of one active import task while holding that reservation through completion. It publishes immutable progress and terminal per-file outcomes through an async stream. `LibraryRemovalService` uses the same gate for removal, targeted retry, and ordered reconciliation. `ImportSessionModel` consumes import events on the main actor and refreshes `LibraryStore` after committed results.
 
 `LibraryStore` owns the shared presentation snapshot and load state. `ImportSessionModel` owns only one sheet operation and never becomes a second durable source of library truth.
 

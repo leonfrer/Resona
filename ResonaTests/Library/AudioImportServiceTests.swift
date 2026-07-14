@@ -369,12 +369,14 @@ struct AudioImportServiceTests {
             in: context.temporaryURL
         )
         let validator = BlockingAudioValidator()
+        let mutationGate = LibraryMutationGate()
         let service = AudioImportService(
             repository: context.repository,
             mediaStore: context.mediaStore,
             sourceAccessor: DirectImportSourceAccessor(),
             validator: validator,
-            metadataReader: StubAudioMetadataReader()
+            metadataReader: StubAudioMetadataReader(),
+            mutationGate: mutationGate
         )
         let stream = try await service.importFiles(at: [firstURL, secondURL])
         let collector = Task { await collect(stream) }
@@ -399,6 +401,81 @@ struct AudioImportServiceTests {
             locale: Locale(identifier: "en_US")
         )
         #expect(songs.isEmpty)
+        guard case let .acquired(reservation) = await mutationGate.acquire() else {
+            Issue.record("Expected cancellation to release the mutation gate")
+            return
+        }
+        await mutationGate.release(reservation)
+    }
+
+    @Test func sharedMutationGateRejectsImportBeforeStartingAStream() async throws {
+        let context = try makeContext()
+        defer { context.cleanup() }
+        let sourceURL = try sourceFile(
+            named: "blocked.mp3",
+            data: Data("audio bytes".utf8),
+            in: context.temporaryURL
+        )
+        let mutationGate = LibraryMutationGate()
+        guard case let .acquired(reservation) = await mutationGate.acquire() else {
+            Issue.record("Expected an available mutation gate")
+            return
+        }
+        let service = AudioImportService(
+            repository: context.repository,
+            mediaStore: context.mediaStore,
+            sourceAccessor: DirectImportSourceAccessor(),
+            validator: SequenceAudioValidator(results: [successfulValidation]),
+            metadataReader: StubAudioMetadataReader(),
+            mutationGate: mutationGate
+        )
+
+        do {
+            _ = try await service.importFiles(at: [sourceURL])
+            Issue.record("Expected shared mutation serialization")
+        } catch let error as AudioImportServiceError {
+            #expect(error == .operationInProgress)
+        }
+
+        await mutationGate.release(reservation)
+        let events = await collect(
+            try await service.importFiles(at: [sourceURL])
+        )
+        #expect(results(in: events).count == 1)
+    }
+
+    @Test func pendingRemovalReconciliationRunsInsideGateBeforeImport() async throws {
+        let context = try makeContext()
+        defer { context.cleanup() }
+        let sourceURL = try sourceFile(
+            named: "pending-cleanup.mp3",
+            data: Data("audio bytes".utf8),
+            in: context.temporaryURL
+        )
+        let mutationGate = LibraryMutationGate()
+        let reconciler = FailingRemovalReconciler(mutationGate: mutationGate)
+        let validator = SequenceAudioValidator(results: [successfulValidation])
+        let service = AudioImportService(
+            repository: context.repository,
+            mediaStore: context.mediaStore,
+            sourceAccessor: DirectImportSourceAccessor(),
+            validator: validator,
+            metadataReader: StubAudioMetadataReader(),
+            mutationGate: mutationGate,
+            removalReconciler: reconciler
+        )
+
+        let events = await collect(
+            try await service.importFiles(at: [sourceURL])
+        )
+
+        #expect(
+            results(in: events).map(\.outcome)
+                == [.failed(.persistenceFailed)]
+        )
+        #expect(await reconciler.callCount == 1)
+        #expect(await reconciler.observedHeldReservation)
+        #expect(await validator.callCount == 0)
     }
 
     @Test func retryStartsFreshWorkForOnlyTheRequestedFile() async throws {
@@ -627,6 +704,24 @@ private actor FailingInsertLibraryRepository: LibraryRepository {
     func pendingRemovals() -> [LibrarySongRemoval] { [] }
 
     func finalizeRemoval(id: UUID) {}
+}
+
+private actor FailingRemovalReconciler: LibraryRemovalReconciling {
+    private let mutationGate: LibraryMutationGate
+    private(set) var callCount = 0
+    private(set) var observedHeldReservation = false
+
+    init(mutationGate: LibraryMutationGate) {
+        self.mutationGate = mutationGate
+    }
+
+    func reconcile(
+        using reservation: LibraryMutationReservation
+    ) async throws -> [LibraryRemovalIssue] {
+        callCount += 1
+        observedHeldReservation = await mutationGate.isHeld(reservation)
+        throw LibraryRemovalReconciliationError.persistenceFailed
+    }
 }
 
 private enum TestRepositoryError: Error {
