@@ -28,7 +28,7 @@ verified its supported migration chain. The later approved development schema
 simplification removed those historical definitions and their migration-only
 model entirely, leaving only the two Library records in one current schema.
 The standalone `Item.swift` file was removed with approval. See the completed
-[Item Model Removal Execution Plan](item-model-removal.md) for the migration
+[Item Model Removal Execution Plan](archive/item-model-removal.md) for the migration
 decision that closed the debt and the subsequent
-[Development Schema Simplification](development-schema-simplification.md) for
+[Development Schema Simplification](archive/development-schema-simplification.md) for
 the current development-store compatibility policy.

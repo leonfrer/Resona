@@ -37,7 +37,7 @@ This dependency order does not require completing every library feature before i
 
 The active specifications approve the remaining Foundation and Music Library work. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
 
-The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The completed [Library Management Execution Plan](../execution-plans/library-management.md) retains its delivery evidence.
+The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The archived [Library Management Execution Plan](../execution-plans/archive/library-management.md) retains its delivery evidence.
 
 Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration code and automated Simulator coverage are complete. Its specification remains Active until physical-device Lock Screen, Control Center, headset, interruption, route-change, and audible background acceptance is recorded in the execution plan.
 

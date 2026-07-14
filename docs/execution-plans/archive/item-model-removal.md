@@ -6,7 +6,7 @@ Complete
 
 ## Objective
 
-Close [TD-001](tech-debt-tracker.md#td-001--removed-scaffold-item) by
+Close [TD-001](../tech-debt-tracker.md#td-001--removed-scaffold-item) by
 removing the unused scaffold `Item` entity from the current SwiftData schema
 without deleting or recreating an existing store and without losing Library
 songs or pending-removal records.
