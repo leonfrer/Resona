@@ -83,7 +83,7 @@ The songs list must be independently testable before library management is consi
 - Removing a library item must not modify the user's original external file.
 - Removal must clean up the app-managed audio copy and related app-owned data.
 - If an audio resource becomes unavailable, the item must not silently behave as though playback succeeded.
-- Removal follows the complete policy below. Queue behavior is not approved until Playback Integration becomes Active.
+- Removal follows the complete policy below.
 
 ## Display terminology
 
@@ -97,7 +97,7 @@ The songs list must be independently testable before library management is consi
 - The confirmation states that Resona's managed audio and artwork will be deleted, the original external file will not be changed, and current playback will stop when applicable.
 - The song becomes unavailable to new selection as soon as removal begins.
 - If the song is the current Basic Playback item, removal stops playback and clears the current item before deleting its app-owned resources. Removing any other song leaves the current item unchanged.
-- When queue behavior is approved, Playback Integration must define how removal clears queued references before this policy is extended to queues.
+- [Playback Integration](playback.md#restoration-and-invalidation-policy) owns queue-reference invalidation and preserves this specification's current-item stop-and-clear policy.
 - If cleanup cannot finish, the song is not restored as playable. Resona identifies it in removal feedback and offers Try Again while automatic reconciliation remains pending.
 - Album browsing, artist browsing, and search remain later delivery stages and do not block the Songs List or Library Management stages.
 
