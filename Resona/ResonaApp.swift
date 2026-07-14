@@ -5,6 +5,7 @@ import SwiftUI
 struct ResonaApp: App {
     private let sharedModelContainer: ModelContainer
     private let audioImporter: any AudioImporting
+    private let libraryRemover: any LibraryRemoving
     private let initialImportSession: ImportSessionModel?
     @State private var libraryStore: LibraryStore
     @State private var playbackStore: PlaybackStore
@@ -14,6 +15,7 @@ struct ResonaApp: App {
             let dependencies = try AppDependencies.make()
             sharedModelContainer = dependencies.modelContainer
             audioImporter = dependencies.audioImporter
+            libraryRemover = dependencies.libraryRemover
             initialImportSession = dependencies.initialImportSession
             _libraryStore = State(initialValue: dependencies.libraryStore)
             _playbackStore = State(initialValue: dependencies.playbackStore)
@@ -28,6 +30,7 @@ struct ResonaApp: App {
                 .environment(libraryStore)
                 .environment(playbackStore)
                 .environment(\.audioImporter, audioImporter)
+                .environment(\.libraryRemover, libraryRemover)
         }
         .modelContainer(sharedModelContainer)
     }
@@ -37,6 +40,7 @@ struct ResonaApp: App {
 private struct AppDependencies {
     let modelContainer: ModelContainer
     let audioImporter: any AudioImporting
+    let libraryRemover: any LibraryRemoving
     let libraryStore: LibraryStore
     let playbackStore: PlaybackStore
     let initialImportSession: ImportSessionModel?
@@ -70,7 +74,7 @@ private struct AppDependencies {
         let libraryStore = LibraryStore(
             repository: repository,
             prepareForInitialLoad: {
-                _ = try await removalService.reconcileLibrary()
+                try await removalService.reconcileLibrary()
             }
         )
         let playbackStore = PlaybackStore(
@@ -82,6 +86,7 @@ private struct AppDependencies {
         return AppDependencies(
             modelContainer: modelContainer,
             audioImporter: audioImporter,
+            libraryRemover: removalService,
             libraryStore: libraryStore,
             playbackStore: playbackStore,
             initialImportSession: nil
@@ -102,6 +107,12 @@ private struct AppDependencies {
             scenario = .playbackResourceFailure
         } else if arguments.contains("--ui-testing-playback-transient-failure") {
             scenario = .playbackTransientFailure
+        } else if arguments.contains("--ui-testing-removal-final-song") {
+            scenario = .removalFinalSong
+        } else if arguments.contains("--ui-testing-removal-cleanup-failure") {
+            scenario = .removalCleanupFailure
+        } else if arguments.contains("--ui-testing-removal-identifier-title") {
+            scenario = .removalIdentifierTitle
         } else {
             return nil
         }
@@ -109,9 +120,23 @@ private struct AppDependencies {
         let modelContainer = try ResonaModelContainer.make(
             isStoredInMemoryOnly: true
         )
-        let songs = scenario == .emptyLibrary ? [] : UITestScenario.songs
+        let songs: [LibrarySong]
+        switch scenario {
+        case .emptyLibrary:
+            songs = []
+        case .removalFinalSong, .removalCleanupFailure:
+            songs = [UITestScenario.songs[0]]
+        case .removalIdentifierTitle:
+            songs = [UITestScenario.identifierTitleSong]
+        default:
+            songs = UITestScenario.songs
+        }
         let repository = UITestLibraryRepository(songs: songs)
         let libraryStore = LibraryStore(repository: repository)
+        let libraryRemover = UITestLibraryRemover(
+            repository: repository,
+            cleanupFailsFirstRemoval: scenario == .removalCleanupFailure
+        )
         let playbackStore: PlaybackStore
         switch scenario {
         case .playbackResourceFailure:
@@ -136,7 +161,9 @@ private struct AppDependencies {
                 initialPosition: 30,
                 initialDuration: 213
             )
-        case .emptyLibrary, .populatedLibrary, .importSession:
+        case .emptyLibrary, .populatedLibrary, .importSession,
+             .removalFinalSong, .removalCleanupFailure,
+             .removalIdentifierTitle:
             playbackStore = PlaybackStore(
                 itemProvider: LibraryPlaybackItemProvider(repository: repository),
                 engine: UITestAudioPlaybackEngine(),
@@ -162,6 +189,7 @@ private struct AppDependencies {
         return AppDependencies(
             modelContainer: modelContainer,
             audioImporter: audioImporter,
+            libraryRemover: libraryRemover,
             libraryStore: libraryStore,
             playbackStore: playbackStore,
             initialImportSession: initialImportSession
@@ -177,6 +205,9 @@ nonisolated private enum UITestScenario {
     case importSession
     case playbackResourceFailure
     case playbackTransientFailure
+    case removalFinalSong
+    case removalCleanupFailure
+    case removalIdentifierTitle
 
     static let importURLs = [
         URL(filePath: "/ui-test/Imported.m4a"),
@@ -224,10 +255,24 @@ nonisolated private enum UITestScenario {
             availability: .unavailable
         ),
     ]
+
+    static let identifierTitleSong = LibrarySong(
+        id: UUID(
+            uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4)
+        ),
+        title: "00000000-0000-0000-0000-000000000004",
+        artist: nil,
+        album: nil,
+        durationSeconds: 45,
+        artworkURL: nil,
+        availability: .available(
+            audioURL: URL(filePath: "/ui-test/internal-title.m4a")
+        )
+    )
 }
 
 private actor UITestLibraryRepository: LibraryRepository {
-    let songs: [LibrarySong]
+    private var songs: [LibrarySong]
 
     init(songs: [LibrarySong]) {
         self.songs = songs
@@ -235,6 +280,14 @@ private actor UITestLibraryRepository: LibraryRepository {
 
     func fetchSongs(locale: Locale) -> [LibrarySong] {
         LibrarySongSorting.sorted(songs, locale: locale)
+    }
+
+    func removeSong(id: UUID) {
+        songs.removeAll { $0.id == id }
+    }
+
+    func storedSong(id: UUID) -> LibrarySong? {
+        songs.first { $0.id == id }
     }
 
     func resourceReferences() -> LibraryResourceReferences {
@@ -250,6 +303,52 @@ private actor UITestLibraryRepository: LibraryRepository {
     func beginRemoval(id: UUID) -> LibraryRemovalBeginning { .missing }
     func pendingRemovals() -> [LibrarySongRemoval] { [] }
     func finalizeRemoval(id: UUID) {}
+}
+
+private actor UITestLibraryRemover: LibraryRemoving {
+    private let repository: UITestLibraryRepository
+    private let cleanupFailsFirstRemoval: Bool
+    private var didFailCleanup = false
+    private var pendingIssues: [UUID: LibraryRemovalIssue] = [:]
+
+    init(
+        repository: UITestLibraryRepository,
+        cleanupFailsFirstRemoval: Bool = false
+    ) {
+        self.repository = repository
+        self.cleanupFailsFirstRemoval = cleanupFailsFirstRemoval
+    }
+
+    func remove(
+        id: UUID,
+        beforeRemoval: @Sendable () async throws -> Void,
+        afterAcceptance: @Sendable () async -> Void
+    ) async -> LibraryRemovalOutcome {
+        do {
+            try await beforeRemoval()
+        } catch {
+            return .notAccepted
+        }
+        guard let song = await repository.storedSong(id: id) else {
+            return .missing
+        }
+        await repository.removeSong(id: id)
+        await afterAcceptance()
+        if cleanupFailsFirstRemoval, !didFailCleanup {
+            didFailCleanup = true
+            let issue = LibraryRemovalIssue(id: id, title: song.title)
+            pendingIssues[id] = issue
+            return .pendingCleanup(issue)
+        }
+        return .removed
+    }
+
+    func retryRemoval(id: UUID) -> LibraryRemovalRetryOutcome {
+        guard pendingIssues.removeValue(forKey: id) != nil else {
+            return .missing
+        }
+        return .completed
+    }
 }
 
 private final class UITestAudioPlaybackEngine: AudioPlaybackEngine {

@@ -3,6 +3,7 @@ import UIKit
 
 struct SongRow: View {
     let song: LibrarySong
+    var isRemovalInProgress = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -28,7 +29,10 @@ struct SongRow: View {
 
             Spacer(minLength: 8)
 
-            if let duration = song.durationSeconds {
+            if isRemovalInProgress {
+                ProgressView()
+                    .accessibilityLabel("Removing \(song.title)")
+            } else if let duration = song.durationSeconds {
                 Text(durationText(duration))
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.secondary)
