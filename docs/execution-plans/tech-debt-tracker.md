@@ -23,11 +23,12 @@ None.
 
 **Owner:** Library persistence
 
-Schema V3 removed `Item` from current persistence and intentionally discards
-its timestamp-only scaffold rows. Historical V0, V1, and V2 definitions retain
-the model solely as migration input. Actual on-disk migrations from every
-supported prior schema preserved active songs and pending-removal records, the
-standalone `Item.swift` file was removed with approval, and the complete
-physical-device unit suite passed. See the completed
+The versioned-schema cleanup first removed `Item` from current persistence and
+verified its supported migration chain. The later approved development schema
+simplification removed those historical definitions and their migration-only
+model entirely, leaving only the two Library records in one current schema.
+The standalone `Item.swift` file was removed with approval. See the completed
 [Item Model Removal Execution Plan](item-model-removal.md) for the migration
-decision and verification evidence.
+decision that closed the debt and the subsequent
+[Development Schema Simplification](development-schema-simplification.md) for
+the current development-store compatibility policy.

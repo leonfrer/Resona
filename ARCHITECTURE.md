@@ -13,11 +13,10 @@ The product direction is described in `README.md`. A feature listed there is pla
 The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, the implemented Library Management runtime, and the Playback Integration runtime in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified. Playback Integration queue, system-state projection, interruption and route policy, persistence, silent restoration, and UI behavior have automated Simulator coverage; physical-device Lock Screen, Control Center, headset, route, and interruption acceptance remains pending in its active execution plan.
 
 - `ResonaApp` is the composition root.
-- It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
+- It creates a disk-backed SwiftData `ModelContainer` using the single `ResonaSchema.current` definition.
 - It constructs the managed-media store, Library repository, shared mutation gate, audio-import and removal services, playback item provider, AVFoundation playback adapters, shared `LibraryStore`, and application-lifetime `PlaybackStore`, then installs presentation dependencies in the SwiftUI environment.
-- Schema V0 represents the original `Item`-only store. Schema V1 adds `LibrarySongRecord`, Schema V2 adds `LibrarySongRemovalRecord`, and current Schema V3 removes `Item` through a verified lightweight V0-to-V1-to-V2-to-V3 migration chain.
-- `ContentView` hosts one `NavigationStack` rooted at `LibraryView`; no runtime composition or presentation path references scaffold `Item` values.
-- The timestamp-only `Item` type remains beside the historical schemas solely so V0, V1, and V2 stores can migrate. V3 intentionally discards those scaffold rows while preserving Library records.
+- The single current schema contains `LibrarySongRecord` and `LibrarySongRemovalRecord`. During development, the repository does not retain historical schema definitions or guarantee that stores created by earlier schemas can open; an incompatible installed development store must be reset manually.
+- `ContentView` hosts one `NavigationStack` rooted at `LibraryView`.
 - The Library domain defines stable song identity, normalized song values, content fingerprints, resource availability, duplicate candidates, and deterministic localized sorting.
 - `SwiftDataLibraryRepository` is a model actor that owns library-record queries and mutations behind `LibraryRepository`, including fresh stable-ID lookup for playback and the atomic active-record-to-pending-removal transaction. Pending removals are excluded from active lookup and duplicate matching while retaining managed-resource ownership until idempotent finalization. SwiftData records and `ModelContext` do not cross that boundary.
 - `ManagedMediaStore` is an actor that owns versioned app-managed Audio, Artwork, and Staging directories. It provides staging locations, same-volume moves into identity-derived final filenames, complete byte comparison, availability resolution, explicit cleanup, and reconciliation of abandoned or unreferenced files.
@@ -44,15 +43,14 @@ The repository now contains the Import to Songs List slice, the implemented Basi
 
 ```text
 ResonaApp
-  -> creates V3 versioned ModelContainer, ManagedMediaStore,
+  -> creates the single current ModelContainer, ManagedMediaStore,
      SwiftDataLibraryRepository, LibraryMutationGate,
      AudioImportService, LibraryRemovalService, LibraryStore,
      LibraryPlaybackItemProvider, AVAudioPlayerEngine,
      AVAudioSessionController, MPNowPlayingController,
      MPRemoteCommandController, FilePlaybackRestorationStore,
      and PlaybackStore
-  -> migrates supported prior stores, discards obsolete scaffold Item rows,
-     and preserves Library records
+  -> does not provide compatibility migrations for earlier development stores
   -> installs the model container plus Library and Playback dependencies
 
 ContentView
@@ -109,7 +107,6 @@ ImportSessionModel
 SwiftData
   -> persists active LibrarySongRecord and pending LibrarySongRemovalRecord
      values through SwiftDataLibraryRepository
-  -> retains historical Item metadata only for supported store migration
 
 LibraryRepository
   -> maps LibrarySongRecord to Sendable Library domain values
@@ -150,7 +147,7 @@ Resona/
 │   ├── Domain/                    Sendable song, identity, availability, and sorting values
 │   ├── Import/                    Source access, fingerprinting, typed results, and import coordination
 │   ├── Metadata/                  AVFoundation validation/reading and canonical normalization
-│   ├── Persistence/               V3 records, historical schemas, migration plan, repository, and resource boundary
+│   ├── Persistence/               Current schema, records, repository, and resource boundary
 │   ├── Presentation/              Library state, removal feedback, Songs List, import UI, and rows
 │   ├── Removal/                   Removal boundary, cleanup, retry, and ordered reconciliation
 │   └── Storage/                   Managed resource staging, commit, cleanup, and reconciliation
@@ -201,7 +198,7 @@ The Library boundary owns imported media and the user's browsable collection:
 - Metadata reads and normalizes embedded metadata and artwork.
 - Persistence stores library records and restoration data.
 
-External files and metadata are untrusted boundary inputs. The implemented import boundary copies coordinated source bytes into staging while calculating a complete SHA-256 fingerprint, validates supported container and codec combinations with Apple media frameworks, and normalizes optional metadata before committing domain data. The initial library schema and non-destructive migration chain are established; later schema changes must extend that chain deliberately.
+External files and metadata are untrusted boundary inputs. The implemented import boundary copies coordinated source bytes into staging while calculating a complete SHA-256 fingerprint, validates supported container and codec combinations with Apple media frameworks, and normalizes optional metadata before committing domain data. During development, the Library uses one current schema and does not retain compatibility definitions for earlier development stores.
 
 ### Playback
 
@@ -248,9 +245,9 @@ These boundaries are invariants; the exact types, folder layout, and use of prot
 - The app composition layer owns the lifetime of shared services.
 - SwiftData is the current persistence technology, but `ModelContext` should not become a general-purpose dependency passed through unrelated features.
 
-Schema V3 contains only the active Library and pending-removal records. The historical timestamp-only `Item` model is excluded from current persistence and retained beside V0, V1, and V2 only so existing stores can traverse the supported migration chain. The approved V2-to-V3 migration intentionally discards scaffold rows without deleting or recreating the store and preserves Library records.
+The sole Library schema contains only the active song and pending-removal records. No historical schema or migration plan is compiled into the app during development. An installed store with an incompatible earlier model requires a manual development-app data reset; the app does not automatically delete or recreate the store.
 
-`LibrarySongRecord` is the active persisted music-library model. `LibrarySongRemovalRecord` is the minimal V2 pending-cleanup intent containing the former identity, display title, and managed filenames. `SwiftDataLibraryRepository` owns their `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth. `LibraryRemovalService` owns managed-resource cleanup, tombstone finalization, explicit retry, and launch reconciliation. `LibraryStore` invokes it through `LibraryRemoving`, supplies the narrow playback-invalidation callbacks, and publishes transient request progress and retryable feedback without becoming a second persistence source.
+`LibrarySongRecord` is the active persisted music-library model. `LibrarySongRemovalRecord` is the minimal pending-cleanup intent containing the former identity, display title, and managed filenames. `SwiftDataLibraryRepository` owns their `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth. `LibraryRemovalService` owns managed-resource cleanup, tombstone finalization, explicit retry, and launch reconciliation. `LibraryStore` invokes it through `LibraryRemoving`, supplies the narrow playback-invalidation callbacks, and publishes transient request progress and retryable feedback without becoming a second persistence source.
 
 `ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's combined active and pending-removal filename snapshot and removes abandoned staging work plus genuinely unreferenced final resources; it never treats file presence as a persisted library record or bypasses tombstone-owned cleanup.
 
