@@ -46,6 +46,9 @@ struct PlayerView: View {
                 }
             }
         )
+        .task(id: playbackStore.queue?.baseOrder) {
+            await playbackStore.loadQueueItems()
+        }
         .accessibilityIdentifier("player.sheet")
     }
 
@@ -79,14 +82,92 @@ struct PlayerView: View {
 
             progressControls
 
-            primaryTransportControl
+            queueModeControls
+
+            transportControls
 
             if case let .failed(failure) = playbackStore.phase {
                 failureView(failure)
             }
+
+            queueSection
         }
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
+    }
+
+    private var queueModeControls: some View {
+        HStack(spacing: 12) {
+            Button(action: playbackStore.toggleShuffle) {
+                Label(
+                    playbackStore.queue?.isShuffleEnabled == true
+                        ? "Shuffle On"
+                        : "Shuffle Off",
+                    systemImage: playbackStore.queue?.isShuffleEnabled == true
+                        ? "shuffle.circle.fill"
+                        : "shuffle"
+                )
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("player.shuffle")
+
+            Button(action: playbackStore.cycleRepeatMode) {
+                Label(
+                    playbackStore.queue?.repeatMode.controlLabel
+                        ?? "Repeat Off",
+                    systemImage: playbackStore.queue?.repeatMode.systemImage
+                        ?? "repeat"
+                )
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("player.repeat")
+        }
+        .disabled(playbackStore.queue == nil)
+    }
+
+    private var transportControls: some View {
+        HStack(spacing: 28) {
+            queueTransportButton(
+                label: "Previous",
+                systemImage: "backward.fill",
+                identifier: "player.previous",
+                isEnabled: playbackStore.canGoPrevious,
+                action: playbackStore.previous
+            )
+
+            primaryTransportControl
+
+            queueTransportButton(
+                label: "Next",
+                systemImage: "forward.fill",
+                identifier: "player.next",
+                isEnabled: playbackStore.canGoNext,
+                action: playbackStore.next
+            )
+        }
+    }
+
+    private func queueTransportButton(
+        label: LocalizedStringResource,
+        systemImage: String,
+        identifier: String,
+        isEnabled: Bool,
+        action: @escaping () async -> Void
+    ) -> some View {
+        Button {
+            Task {
+                await action()
+            }
+        } label: {
+            Label(label, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .font(.title2.bold())
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .disabled(!isEnabled || playbackStore.pendingSelectionID != nil)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 
     @ViewBuilder
@@ -165,7 +246,7 @@ struct PlayerView: View {
         Button(action: action) {
             Label(label, systemImage: systemImage)
                 .font(.title3.bold())
-                .frame(minWidth: 140)
+                .frame(minWidth: 120)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
@@ -202,6 +283,108 @@ struct PlayerView: View {
         .padding()
         .frame(maxWidth: .infinity)
         .background(.quaternary, in: .rect(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private var queueSection: some View {
+        if playbackStore.queue != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Queue")
+                        .font(.headline)
+                    Spacer()
+                    if playbackStore.isLoadingQueueItems {
+                        ProgressView()
+                            .controlSize(.small)
+                            .accessibilityLabel("Loading queue")
+                    }
+                }
+
+                LazyVStack(spacing: 0) {
+                    ForEach(playbackStore.queuedItemsInTraversalOrder) { item in
+                        PlayerQueueRow(
+                            item: item,
+                            isCurrent: item.id == playbackStore.currentItem?.id
+                        )
+                    }
+                }
+                .background(.quaternary, in: .rect(cornerRadius: 14))
+
+                if !playbackStore.isLoadingQueueItems,
+                   let queue = playbackStore.queue,
+                   playbackStore.queueItems.count < queue.baseOrder.count {
+                    Button("Reload Queue") {
+                        Task {
+                            await playbackStore.loadQueueItems()
+                        }
+                    }
+                    .accessibilityIdentifier("player.queue.reload")
+                }
+            }
+            .accessibilityIdentifier("player.queue")
+        }
+    }
+}
+
+private struct PlayerQueueRow: View {
+    let item: PlaybackItem
+    let isCurrent: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isCurrent ? "speaker.wave.2.fill" : "music.note")
+                .foregroundStyle(isCurrent ? .primary : .secondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.title)
+                    .font(.subheadline.weight(isCurrent ? .semibold : .regular))
+                    .lineLimit(2)
+                Text(item.artist ?? String(localized: "Unknown Artist"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            if isCurrent {
+                Text("Current")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if case .unavailable = item.availability {
+                Label("Unavailable", systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("player.queue.item.\(item.id.uuidString)")
+    }
+}
+
+private extension PlaybackRepeatMode {
+    var controlLabel: LocalizedStringResource {
+        switch self {
+        case .off:
+            "Repeat Off"
+        case .all:
+            "Repeat All"
+        case .one:
+            "Repeat One"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .off, .all:
+            "repeat"
+        case .one:
+            "repeat.1"
+        }
     }
 }
 

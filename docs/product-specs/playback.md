@@ -2,13 +2,15 @@
 
 ## Status
 
-Proposed
+Active
 
 ## User outcome
 
 Users can extend reliable basic playback with a queue, expected iOS system controls, background audio, interruption handling, and useful state restoration.
 
-This specification is Proposed. Its requirements describe the problem boundary, but queue, interruption, route, restoration, and remote-command behavior is not approved for implementation until the open questions are resolved and the status becomes Active.
+The queue, interruption, route, restoration, removal, and first-release remote-command behavior in this specification is approved for implementation.
+
+The runtime and automated iPhone Simulator coverage are complete. Physical-device Lock Screen, Control Center, headset, interruption, route-change, and audible background acceptance remains outstanding before this specification can move to Implemented.
 
 ## Depends on
 
@@ -33,13 +35,15 @@ This specification is Proposed. Its requirements describe the problem boundary, 
 - Cross-device handoff or synchronization
 - Audio effects, equalizers, or playback-speed controls
 - Gapless playback and crossfade unless separately specified
+- Queue reordering, manually adding or removing individual queue items, or jumping directly to an arbitrary queued item
+- System rating, like, dislike, bookmark, playback-rate, and skip-interval commands
 
 ## User flows
 
 ### Start playback
 
 1. The user selects an available song from the library.
-2. Resona establishes an authoritative playback state and queue.
+2. Resona snapshots the identities in the current visible library order as the queue and makes the selected song current.
 3. Playback begins or an actionable failure is shown.
 4. The player UI and system Now Playing surfaces reflect the same state.
 
@@ -55,6 +59,12 @@ This specification is Proposed. Its requirements describe the problem boundary, 
 2. Resona applies the documented recovery policy.
 3. The UI and system surfaces reflect the resulting state without claiming playback that is not occurring.
 
+### Inspect the queue
+
+1. The user opens the detailed player.
+2. Resona shows the current queue in its active traversal order and distinguishes the current item, unavailable items, and the active shuffle and repeat modes.
+3. Inspecting or dismissing the queue does not issue a transport command or change playback.
+
 ## Behavioral requirements
 
 - Playback must have one authoritative state owner.
@@ -64,9 +74,45 @@ This specification is Proposed. Its requirements describe the problem boundary, 
 - An unavailable queue item must not cause an endless retry or silent stall.
 - Headphone disconnection and audio-session interruptions must follow documented platform-appropriate behavior.
 - Basic Playback owns minimum continuation of already-started single-song playback in the background. This stage owns the additional interruption, route-change, remote-command, queue, and restoration behavior around it.
-- Queue, shuffle, repeat, and restoration semantics must be resolved before this specification becomes Active.
 - Restoration must not automatically begin audible playback when platform expectations or user intent do not support it.
-- Library removal and playback queues must use one resolved invalidation policy without leaving references to deleted songs. The exact queue behavior remains an open question in this Proposed specification.
+- The first release supports Play, Pause, Toggle Play/Pause, Next, Previous, and Change Playback Position from system remote-command surfaces. Unsupported commands remain disabled.
+
+## Queue and transport policy
+
+- Selecting an available song snapshots every identity in the current visible library order. Later sorting or filtering changes do not mutate that queue.
+- The selected identity becomes current. Queue order uses stable library identities rather than copied media or persistence records.
+- Without Repeat All, Next at the final playable item and Previous at the first playable item do nothing. With Repeat All, those commands wrap at the boundaries.
+- Repeat One restarts the current item only after its natural end. Manual Next and Previous continue to navigate the queue.
+- With shuffle off, traversal follows the queue's base order. Enabling shuffle keeps the current item current and establishes one stable shuffled traversal order.
+- Shuffle Previous walks the actual traversal history. Moving forward after Previous follows that history before continuing through the existing shuffled order.
+- A shuffled traversal order remains stable until the queue changes or shuffle is turned off. Repeat All wraps that same order instead of silently generating a new one.
+- When playback advances, Resona searches no more than one complete traversal for a playable item. It skips unavailable or missing items and stops with an actionable error if no playable item remains.
+- Natural end follows Repeat One first, then the active queue traversal. At the final playable item without Repeat All, playback stops at the end and retains that current item.
+
+## Interruption and route policy
+
+- When an audio-session interruption begins, Resona pauses and remembers whether playback was active immediately before the interruption.
+- When the interruption ends, Resona resumes only when playback was active before it began and the system indicates that resumption is appropriate. Otherwise it remains paused.
+- Disconnecting headphones or another external output route pauses active playback and never resumes it automatically.
+- Connecting a new output route does not start, pause, or resume playback by itself.
+- A user transport command received after an interruption or route change follows the ordinary queue and playback rules.
+
+## Restoration and invalidation policy
+
+- Resona restores the queue identities and base order, current identity, elapsed position, repeat mode, shuffle mode, shuffled traversal order, and traversal history across relaunches.
+- Resona does not restore a playing intention. A restored valid current item remains non-playing at the restored position until the user explicitly starts playback. An item restored at its natural end retains Basic Playback's restart-from-beginning behavior.
+- Restored identities that no longer exist in the library are discarded. Unavailable library items remain visible in the queue and follow the bounded skip policy.
+- If restoration leaves no valid current item, Resona clears the current playback state and system Now Playing information.
+- Beginning confirmed library removal removes every queued reference to that identity before library-owned resources are deleted.
+- Removing the current item follows Music Library's existing policy: playback stops, the current item is cleared, and Resona does not automatically advance to another queue item.
+- Removing a non-current item preserves the current item and the relative order and traversal history of all remaining identities.
+
+## System Now Playing policy
+
+- System Now Playing information reflects the current item's canonical title, artist, album, artwork when available, playable duration, elapsed position, playback rate, and queue position and count.
+- Paused, interrupted, stopped-at-end, and failed states retain the current item's metadata with a non-playing rate.
+- Replacing the current item updates system information to the replacement without exposing stale metadata or artwork.
+- Clearing the current item clears system Now Playing information and disables commands that require a current item.
 
 ## Failure cases
 
@@ -77,28 +123,21 @@ This specification is Proposed. Its requirements describe the problem boundary, 
 - A queued song is removed from the library.
 - Restored queue data references unavailable library items.
 - Remote commands arrive while no valid current item exists.
+- Persisted restoration data is missing, malformed, incompatible, or partially references deleted songs.
 
 ## Acceptance criteria
 
+- Selecting an available song snapshots the current visible library order, makes the selected identity current, and does not let later sorting or filtering mutate that queue.
+- The detailed player shows the active traversal order, current and unavailable items, shuffle mode, and repeat mode; inspecting or dismissing it does not issue a transport command.
 - Once activated, Next and Previous actions follow the approved queue policy and keep UI state consistent with audible playback.
-- Supported Lock Screen, Control Center, and headphone commands control the same playback state as in-app controls.
+- Play, Pause, Toggle Play/Pause, Next, Previous, and Change Playback Position from supported Lock Screen, Control Center, and headphone surfaces control the same playback state as in-app controls; unsupported commands remain disabled.
 - Now Playing metadata matches the audible song and clears or updates when playback state requires it.
-- Playback responds correctly to interruptions and headphone disconnection according to the resolved policy.
-- Bad, missing, or removed queue items follow the approved invalidation and unavailable-item policies without corrupting the queue or library.
+- Playback resumes after an interruption only when it was previously playing and the system recommends resumption; external-route disconnection pauses without automatic resume.
+- Unavailable or missing items are skipped in at most one complete traversal, and an all-invalid queue stops with an actionable error instead of retrying indefinitely.
+- Removing the current item stops and clears it without advancing; removing another item preserves current playback; neither case leaves a live or restored reference to the removed identity.
 - Natural end, Previous, shuffle, Repeat One, and Repeat All follow the approved queue semantics without duplicating or silently losing valid queue items.
-- Relaunching restores the agreed queue and position state without unexpectedly starting audible playback.
+- Relaunching restores the approved queue, position, mode, traversal, and history state without audible playback; a position restored at natural end restarts from the beginning on the next Play.
 - The critical start, control, interruption, and restoration journeys have automated coverage where technically practical.
-
-## Open questions
-
-- Which queue and playback-position state persists across relaunches?
-- What interruption behavior is expected for calls, Siri, alarms, and other audio apps?
-- What should happen after headphone or external-route disconnection?
-- Should playback skip unavailable items automatically or stop with an error?
-- Which system remote commands are supported in the first release?
-- What queue is created when a user selects a song from a sorted or filtered library view?
-- How do Repeat One, Repeat All, shuffle history, and Previous interact at boundaries?
-- How are current and queued references invalidated when a library song is removed?
 
 ## Related documents
 

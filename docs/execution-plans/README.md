@@ -6,6 +6,7 @@ Execution plans translate approved behavior into temporary implementation decisi
 
 | Plan | State | Reading guidance |
 | --- | --- | --- |
+| [Playback Integration](playback-integration.md) | Active | Implementation complete; physical-device acceptance pending |
 | [Library Management](library-management.md) | Complete | Historical verification record only |
 | [Basic Playback](basic-playback.md) | Complete | Historical verification record only |
 | [Import to Songs List](import-to-songs-list.md) | Complete | Historical verification record only |

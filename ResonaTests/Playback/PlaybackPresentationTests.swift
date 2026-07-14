@@ -27,5 +27,9 @@ struct PlaybackPresentationTests {
             PlaybackFailure.playbackFailed.presentation.recoveryAction
                 == .retry
         )
+        #expect(
+            PlaybackFailure.queueUnavailable.presentation.recoveryAction
+                == .retry
+        )
     }
 }

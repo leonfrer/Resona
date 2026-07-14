@@ -54,6 +54,37 @@ struct LibraryPlaybackItemProviderTests {
         #expect(try await provider.item(for: id)?.availability == .unavailable)
         #expect(try await provider.item(for: UUID()) == nil)
     }
+
+    @Test func batchLookupPreservesRequestedOrderAndOmitsMissingSongs() async throws {
+        let first = LibrarySong(
+            id: UUID(),
+            title: "First",
+            artist: nil,
+            album: nil,
+            durationSeconds: 10,
+            artworkURL: nil,
+            availability: .unavailable
+        )
+        let second = LibrarySong(
+            id: UUID(),
+            title: "Second",
+            artist: nil,
+            album: nil,
+            durationSeconds: 20,
+            artworkURL: nil,
+            availability: .unavailable
+        )
+        let provider = LibraryPlaybackItemProvider(
+            repository: PlaybackProviderTestRepository(songs: [first, second])
+        )
+
+        let items = try await provider.items(
+            for: [second.id, UUID(), first.id]
+        )
+
+        #expect(items.map(\.id) == [second.id, first.id])
+        #expect(items.map(\.title) == ["Second", "First"])
+    }
 }
 
 private actor PlaybackProviderTestRepository: LibraryRepository {
