@@ -25,10 +25,10 @@ This dependency order does not require completing every library feature before i
 
 | Specification | Status | Implementation |
 | --- | --- | --- |
-| [Experience foundation](experience-foundation.md) | Active | Import, library, and Basic Playback feedback subsets verified |
-| [Library foundation](library-foundation.md) | Active | Identity, storage, metadata, and consistency subset verified; removal deferred |
+| [Experience foundation](experience-foundation.md) | Active | Import, library, Basic Playback, removal feedback, and removal accessibility subsets verified |
+| [Library foundation](library-foundation.md) | Active | Identity, storage, metadata, consistency, and removal subsets implemented and verified |
 | [Local audio import](local-audio-import.md) | Active | Import to Songs List slice implemented and verified |
-| [Music library](music-library.md) | Active | Songs List and playback-selection subsets verified; Library Management deferred |
+| [Music library](music-library.md) | Active | Songs List, playback selection, and Library Management implemented and verified |
 | [Basic playback](basic-playback.md) | Implemented | Runtime, Audio background mode, automated suites, and physical background/lock behavior verified |
 | [Playback integration](playback.md) | Proposed | Not started |
 | [Quality attributes](quality-attributes.md) | Active | Initial performance and storage targets defined; release evidence pending |
@@ -37,7 +37,7 @@ This dependency order does not require completing every library feature before i
 
 The active specifications approve the remaining Foundation and Music Library work. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
 
-The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The next implementation-ready plan is [Library Management Execution Plan](../execution-plans/library-management.md).
+The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The completed [Library Management Execution Plan](../execution-plans/library-management.md) retains its delivery evidence.
 
 Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration remains Proposed; system Now Playing presentation, remote commands, queues, restoration, and broader interruption or route behavior owned by it are not part of Basic Playback and must not be claimed as implemented until its remaining decisions are resolved and it becomes Active.
 

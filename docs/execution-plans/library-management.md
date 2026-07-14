@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress — Library presentation milestone complete
+Complete
 
 ## Outcome
 
@@ -574,6 +574,78 @@ document first.
 - Targeted sequence 4 UI suite: passed 6 tests on iPad Pro 13-inch (M5)
   Simulator, iOS 26.5.
 
-Implementation sequence 4 is complete. Delivery verification and final product
-status updates remain in sequence 5, including `./scripts/check-all.sh` and the
-documented interactive and physical-resource checks.
+Implementation sequence 4 is complete. Sequence 5 has completed its automated
+delivery suites and representative device launches; the targeted hands-on
+checks recorded below remain.
+
+### 2026-07-14 — Delivery verification in progress
+
+- `xcodebuild` unit and integration testing passed 87 tests in 16 suites on
+  Leon's iPhone running iOS 26.5.2 using the existing automatic signing
+  configuration.
+- `xcodebuild` UI testing passed 18 tests on the same physical iPhone: 14
+  feature journeys plus four Light Mode, Dark Mode, portrait, and landscape
+  launch checks. The journeys include current and non-current removal,
+  cancellation, final-song removal, unavailable recovery actions, cleanup
+  failure and retry, and accessibility text sizing.
+- An ordinary non-test launch on the physical iPhone was inspected through
+  iPhone Mirroring in Dark Mode. An existing managed song started playback and
+  exposed the persistent current-song surface and Pause action. Existing user
+  library data was preserved; no personal song was removed for this check.
+- `./scripts/check.sh` passed 87 tests on the iPhone 17 Pro Simulator running
+  iOS 26.5.
+- `./scripts/check-all.sh` passed 87 unit and integration tests plus 18 serial
+  UI tests on the iPhone 17 Pro Simulator running iOS 26.5.
+- XcodeBuildMCP built, installed, launched, and inspected ordinary Debug builds
+  on the iPhone 17 Pro and iPad Pro 13-inch (M5) Simulators running iOS 26.5.
+  The iPhone presented a persisted song and current-song surface; the iPad
+  presented the offline-copy empty state and reachable Choose Files action.
+- Observed toolchain diagnostics did not fail validation: the UI runner logged
+  a missing debugger-version snapshot, the Simulator runtime logged duplicate
+  WebCore/WebKit accessibility loader classes, and targets without App Intents
+  logged skipped metadata extraction. No application warning was identified.
+- With Reduce Motion enabled on the iPhone 17 Pro Simulator, three targeted UI
+  tests passed for current-song removal, cleanup failure and Try Again, and
+  removal/recovery controls at accessibility XXXL. The setting was restored to
+  its original disabled state after the run.
+- The populated-library accessibility hierarchy was inspected in order. It
+  exposed Import Audio, the Songs heading, and one combined element per song
+  containing title, artist, and duration or Unavailable. Available songs
+  exposed the named Remove action; the unavailable song exposed Remove and
+  Re-import. A physical-iPhone VoiceOver session then confirmed logical
+  top-to-bottom traversal without duplicate artwork focus. A representative
+  row was spoken as title, artist, duration, button role, Starts Playback hint,
+  and Actions Available, confirming that the combined row content and named
+  Remove action are discoverable.
+- A disposable external `supported-aac.m4a` fixture was copied to an isolated
+  iCloud Drive folder and imported on Leon's physical iPhone. It appeared as
+  Fixture Title by Fixture Artist, selected for playback, and reached natural
+  end. The managed audio was created as
+  `A40B43E2-8107-4249-97E2-AF01D525731C.m4a` and disappeared after confirmed
+  removal. The fixture had no embedded artwork, so no managed artwork was
+  created for this run.
+- The external fixture retained SHA-256
+  `5a583b4e455ae65cdfdc26cdd9ea0c426cbf193c37b6956bf00563a85bea7acc`,
+  matching the repository fixture after removal. Re-importing the same bytes
+  reported Imported rather than Restored and created the new identity
+  `72C50EAF-A516-41BF-831E-2DDB9E7673C4`; its managed audio also disappeared
+  after the second confirmed removal. The other ten managed audio files were
+  unchanged throughout.
+- A disposable MP3 with an embedded PNG cover was generated outside the
+  repository and imported on the physical iPhone. The cover appeared in the
+  Songs List, and the managed resources shared identity
+  `ABD19463-C963-4010-8784-3B08F10EBF20` across the `.mp3` and `.png` files.
+  Both disappeared after confirmed removal, the Artwork directory returned to
+  empty, the other ten managed audio files were unchanged, and the external
+  file retained SHA-256
+  `ffaf7884940b1894d80886b816f99ca104adce3290cc2f90e23ea82c7cd83bbb`.
+- A forced process interruption was not injected into the physical app because
+  its sandbox contained personal library data and deterministic isolation was
+  available. `cancellationAfterAcceptanceKeepsCleanupOwnership` verifies that
+  cancellation after durable acceptance retains pending cleanup;
+  `launchReconciliationRetriesInOrderBeforeOrphanCleanup` verifies relaunch
+  ordering and convergence; the cleanup-failure UI journey verifies absent-song
+  feedback and Try Again. This satisfies the delivery checklist's isolation
+  rule without risking personal data.
+
+Implementation sequence 5 and this execution plan are complete.

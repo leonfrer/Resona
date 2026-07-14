@@ -10,7 +10,7 @@ The product direction is described in `README.md`. A feature listed there is pla
 
 ## Current implementation
 
-The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, and the persistence, cleanup, playback-invalidation, and presentation milestones of Library Management in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified; full Library Management delivery verification remains pending:
+The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, and the implemented Library Management runtime in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified. Library Management automated delivery suites, representative device launches, physical managed-audio and artwork cleanup, and interactive VoiceOver behavior are verified; its completed execution plan retains the evidence:
 
 - `ResonaApp` is the composition root.
 - It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
