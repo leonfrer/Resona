@@ -6,7 +6,13 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct ResonaMigrationTests {
-    @Test func migratesV0StoreThroughCompleteChainWithoutLosingItems() throws {
+    @Test func currentSchemaExcludesScaffoldItem() {
+        let currentModelTypes = ResonaSchemaV3.models.map(ObjectIdentifier.init)
+
+        #expect(!currentModelTypes.contains(ObjectIdentifier(Item.self)))
+    }
+
+    @Test func migratesV0StoreAfterDiscardingScaffoldItems() throws {
         let directory = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         let storeURL = directory.appending(path: "Resona.store")
@@ -23,15 +29,16 @@ struct ResonaMigrationTests {
 
         let migratedContainer = try ResonaModelContainer.make(storeURL: storeURL)
         let context = ModelContext(migratedContainer)
-        let items = try context.fetch(FetchDescriptor<Item>())
         let songs = try context.fetch(FetchDescriptor<LibrarySongRecord>())
+        let removals = try context.fetch(
+            FetchDescriptor<LibrarySongRemovalRecord>()
+        )
 
-        #expect(items.count == 1)
-        #expect(items[0].timestamp == timestamp)
         #expect(songs.isEmpty)
+        #expect(removals.isEmpty)
     }
 
-    @Test func migratesPopulatedV1StoreWithoutLosingItemsOrSongs() throws {
+    @Test func migratesPopulatedV1StoreWithoutLosingSongs() throws {
         let directory = FileManager.default.temporaryDirectory
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         let storeURL = directory.appending(path: "Resona.store")
@@ -53,18 +60,51 @@ struct ResonaMigrationTests {
 
         let migratedContainer = try ResonaModelContainer.make(storeURL: storeURL)
         let context = ModelContext(migratedContainer)
-        let items = try context.fetch(FetchDescriptor<Item>())
         let songs = try context.fetch(FetchDescriptor<LibrarySongRecord>())
         let removals = try context.fetch(
             FetchDescriptor<LibrarySongRemovalRecord>()
         )
 
-        #expect(items.count == 1)
-        #expect(items[0].timestamp == timestamp)
         #expect(songs.count == 1)
         #expect(songs[0].id == songID)
         #expect(songs[0].title == "V1 Song")
         #expect(removals.isEmpty)
+    }
+
+    @Test func migratesPopulatedV2StoreWithoutLosingLibraryRecords() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let storeURL = directory.appending(path: "Resona.store")
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let songID = UUID()
+        let removalID = UUID()
+
+        try createV2Store(
+            at: storeURL,
+            timestamp: Date(timeIntervalSince1970: 3_456_789),
+            songID: songID,
+            removalID: removalID
+        )
+
+        let migratedContainer = try ResonaModelContainer.make(storeURL: storeURL)
+        let context = ModelContext(migratedContainer)
+        let songs = try context.fetch(FetchDescriptor<LibrarySongRecord>())
+        let removals = try context.fetch(
+            FetchDescriptor<LibrarySongRemovalRecord>()
+        )
+
+        #expect(songs.count == 1)
+        #expect(songs[0].id == songID)
+        #expect(songs[0].title == "V2 Song")
+        #expect(removals.count == 1)
+        #expect(removals[0].id == removalID)
+        #expect(removals[0].managedAudioFilename == "pending.m4a")
     }
 
     @Test func preservesSongIdentityAcrossContainerRecreation() async throws {
@@ -143,6 +183,48 @@ struct ResonaMigrationTests {
                 album: "Album",
                 durationSeconds: 120,
                 managedArtworkFilename: "v1-song.jpg"
+            )
+        )
+        try context.save()
+    }
+
+    private func createV2Store(
+        at storeURL: URL,
+        timestamp: Date,
+        songID: UUID,
+        removalID: UUID
+    ) throws {
+        let schema = Schema(versionedSchema: ResonaSchemaV2.self)
+        let configuration = ModelConfiguration(
+            "Resona",
+            schema: schema,
+            url: storeURL
+        )
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [configuration]
+        )
+        let context = ModelContext(container)
+        context.insert(Item(timestamp: timestamp))
+        context.insert(
+            LibrarySongRecord(
+                id: songID,
+                contentDigest: "v2-content",
+                byteCount: 1_024,
+                managedAudioFilename: "v2-song.m4a",
+                title: "V2 Song",
+                artist: "Artist",
+                album: "Album",
+                durationSeconds: 180,
+                managedArtworkFilename: nil
+            )
+        )
+        context.insert(
+            LibrarySongRemovalRecord(
+                id: removalID,
+                title: "Pending Removal",
+                managedAudioFilename: "pending.m4a",
+                managedArtworkFilename: "pending.jpg"
             )
         )
         try context.save()

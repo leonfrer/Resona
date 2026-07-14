@@ -13,41 +13,21 @@ This versioned tracker makes known compromises legible and actionable without tu
 
 ## Active debt
 
-| ID | Area | Summary | Owner | Cleanup trigger | Last reviewed |
-| --- | --- | --- | --- | --- | --- |
-| TD-001 | Library persistence | Retained scaffold `Item` model and V0 schema | Library persistence | After Library Management is complete and its additive schema and migration are verified | 2026-07-14 |
-
-## TD-001 — Retained scaffold `Item`
-
-**Status:** Accepted, active
-**Introduced:** Initial app scaffold
-**Owner:** Library persistence
-
-### Context and interest
-
-`Item` and schema V0 remain solely to preserve the original store through the current additive V1 migration. The app no longer reads or presents `Item`.
-
-The debt adds an irrelevant persisted model to every schema, expands migration reasoning and tests, and may mislead future work into reusing scaffold data as a Library concept.
-
-### Guardrails while active
-
-- Do not add fields, relationships, UI, or new runtime references to `Item`.
-- Keep migration coverage proving that supported prior stores open without deleting Library songs.
-- Do not delete the store or bypass migration to remove the model.
-- Removing the persisted model or `Item.swift` requires the explicit destructive-data-model and file-deletion approval in `AGENTS.md`.
-
-### Cleanup trigger
-
-After Library Management is complete and its additive schema and migration path are verified, create a focused execution plan for removing `Item` in the following schema version. Schema V2 and its V0/V1 migration coverage were added on 2026-07-14; the trigger remains gated on completion of the full Library Management slice.
-
-### Exit criteria
-
-- The current schema and app composition no longer reference `Item`.
-- Migration tests open every supported prior schema without deleting Library songs.
-- Existing scaffold rows are intentionally discarded or transformed according to the approved migration plan.
-- `Item.swift` is removed after approval.
-- `ARCHITECTURE.md`, migration documentation, and this tracker reflect the completed cleanup.
+None.
 
 ## Closed debt
 
-None yet.
+### TD-001 — Removed scaffold `Item`
+
+**Status:** Closed 2026-07-14
+
+**Owner:** Library persistence
+
+Schema V3 removed `Item` from current persistence and intentionally discards
+its timestamp-only scaffold rows. Historical V0, V1, and V2 definitions retain
+the model solely as migration input. Actual on-disk migrations from every
+supported prior schema preserved active songs and pending-removal records, the
+standalone `Item.swift` file was removed with approval, and the complete
+physical-device unit suite passed. See the completed
+[Item Model Removal Execution Plan](item-model-removal.md) for the migration
+decision and verification evidence.
