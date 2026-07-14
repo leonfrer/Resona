@@ -176,6 +176,232 @@ final class ResonaUITests: XCTestCase {
     }
 
     @MainActor
+    func testRemovalRecoveryActionsRemainDiscoverableAtAccessibilityTextSize() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing-populated-library",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+
+        let unavailable = app.descendants(matching: .any)[
+            "library.song.00000000-0000-0000-0000-000000000003"
+        ]
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
+        unavailable.swipeLeft()
+
+        let reimport = app.buttons[
+            "library.reimport.00000000-0000-0000-0000-000000000003"
+        ]
+        let remove = app.buttons[
+            "library.remove.00000000-0000-0000-0000-000000000003"
+        ]
+        XCTAssertTrue(reimport.waitForExistence(timeout: 5))
+        XCTAssertTrue(reimport.isHittable)
+        XCTAssertTrue(remove.isHittable)
+        remove.tap()
+
+        let confirmation = app.alerts["Remove “Missing Resource”?"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmation.buttons["Cancel"].isHittable)
+        XCTAssertTrue(confirmation.buttons["Remove"].isHittable)
+        confirmation.buttons["Cancel"].tap()
+        app.terminate()
+
+        let cleanupApp = XCUIApplication()
+        cleanupApp.launchArguments = [
+            "--ui-testing-removal-cleanup-failure",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        cleanupApp.launch()
+        let song = cleanupApp.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+        revealRemoveAction(
+            for: song,
+            songID: "00000000-0000-0000-0000-000000000001",
+            in: cleanupApp
+        ).tap()
+        cleanupApp.alerts["Remove “Aerial Lines”?"].buttons["Remove"].tap()
+
+        let cleanupAlert = cleanupApp.alerts["Cleanup Couldn’t Finish"]
+        XCTAssertTrue(cleanupAlert.waitForExistence(timeout: 5))
+        XCTAssertTrue(cleanupAlert.buttons["Try Again"].isHittable)
+    }
+
+    @MainActor
+    func testRemovingNonCurrentSongRequiresConfirmationAndPreservesPlayback() {
+        let app = launchApp(scenario: "--ui-testing-populated-library")
+        let current = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        let removed = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000002"
+        ]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        current.tap()
+        XCTAssertTrue(
+            app.buttons["playback.currentSong.open"].waitForExistence(timeout: 5)
+        )
+
+        revealRemoveAction(
+            for: removed,
+            songID: "00000000-0000-0000-0000-000000000002",
+            in: app
+        ).tap()
+        let alert = app.alerts["Remove “Filename Fallback”?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        XCTAssertFalse(
+            alert.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", "Playback will stop")
+            ).firstMatch.exists
+        )
+
+        alert.buttons["Cancel"].tap()
+        XCTAssertTrue(removed.exists)
+        XCTAssertTrue(app.buttons["playback.currentSong.open"].exists)
+
+        revealRemoveAction(
+            for: removed,
+            songID: "00000000-0000-0000-0000-000000000002",
+            in: app
+        ).tap()
+        app.alerts["Remove “Filename Fallback”?"].buttons["Remove"].tap()
+
+        XCTAssertTrue(removed.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["playback.currentSong.open"].exists)
+    }
+
+    @MainActor
+    func testRemovingCurrentSongStopsPlaybackAndClearsCurrentSurface() {
+        let app = launchApp(scenario: "--ui-testing-populated-library")
+        let current = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(current.waitForExistence(timeout: 5))
+        current.tap()
+        XCTAssertTrue(
+            app.buttons["playback.currentSong.open"].waitForExistence(timeout: 5)
+        )
+
+        revealRemoveAction(
+            for: current,
+            songID: "00000000-0000-0000-0000-000000000001",
+            in: app
+        ).tap()
+        let alert = app.alerts["Remove “Aerial Lines”?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            alert.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", "Playback will stop")
+            ).firstMatch.exists
+        )
+        alert.buttons["Remove"].tap()
+
+        XCTAssertTrue(current.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(
+            app.buttons["playback.currentSong.open"].waitForNonExistence(
+                timeout: 5
+            )
+        )
+    }
+
+    @MainActor
+    func testUnavailableSongExposesReimportAndRemoveActions() {
+        let app = launchApp(scenario: "--ui-testing-populated-library")
+        let unavailable = app.descendants(matching: .any)[
+            "library.song.00000000-0000-0000-0000-000000000003"
+        ]
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
+
+        unavailable.swipeLeft()
+
+        XCTAssertTrue(
+            app.buttons[
+                "library.reimport.00000000-0000-0000-0000-000000000003"
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.buttons[
+                "library.remove.00000000-0000-0000-0000-000000000003"
+            ].exists
+        )
+    }
+
+    @MainActor
+    func testRemovingFinalSongReturnsToOfflineEmptyState() {
+        let app = launchApp(scenario: "--ui-testing-removal-final-song")
+        let song = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+
+        revealRemoveAction(
+            for: song,
+            songID: "00000000-0000-0000-0000-000000000001",
+            in: app
+        ).tap()
+        app.alerts["Remove “Aerial Lines”?"].buttons["Remove"].tap()
+
+        XCTAssertTrue(app.staticTexts["No Songs"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["library.chooseFiles"].exists)
+    }
+
+    @MainActor
+    func testRemovalConfirmationDoesNotExposeInternalUUIDTitle() {
+        let app = launchApp(
+            scenario: "--ui-testing-removal-identifier-title"
+        )
+        let identifier = "00000000-0000-0000-0000-000000000004"
+        let song = app.buttons["library.song.\(identifier)"]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+
+        revealRemoveAction(
+            for: song,
+            songID: identifier,
+            in: app
+        ).tap()
+
+        let alert = app.alerts["Remove “Unknown Title”?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        XCTAssertTrue(song.exists)
+        XCTAssertFalse(
+            alert.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", identifier)
+            ).firstMatch.exists
+        )
+    }
+
+    @MainActor
+    func testCleanupFailureKeepsSongAbsentAndTryAgainCompletes() {
+        let app = launchApp(
+            scenario: "--ui-testing-removal-cleanup-failure"
+        )
+        let song = app.buttons[
+            "library.song.00000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(song.waitForExistence(timeout: 5))
+
+        revealRemoveAction(
+            for: song,
+            songID: "00000000-0000-0000-0000-000000000001",
+            in: app
+        ).tap()
+        app.alerts["Remove “Aerial Lines”?"].buttons["Remove"].tap()
+
+        let cleanupAlert = app.alerts["Cleanup Couldn’t Finish"]
+        XCTAssertTrue(cleanupAlert.waitForExistence(timeout: 5))
+        XCTAssertTrue(song.waitForNonExistence(timeout: 5))
+        cleanupAlert.buttons["Try Again"].tap()
+
+        XCTAssertTrue(cleanupAlert.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No Songs"].exists)
+    }
+
+    @MainActor
     private func waitForLabel(
         _ label: String,
         on element: XCUIElement,
@@ -191,6 +417,18 @@ final class ResonaUITests: XCTestCase {
             XCTWaiter.wait(for: [expectation], timeout: timeout),
             .completed
         )
+    }
+
+    @MainActor
+    private func revealRemoveAction(
+        for song: XCUIElement,
+        songID: String,
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        song.swipeLeft()
+        let remove = app.buttons["library.remove.\(songID)"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        return remove
     }
 
     @MainActor

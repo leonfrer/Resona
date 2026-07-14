@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress — Basic Playback invalidation milestone complete
+In progress — Library presentation milestone complete
 
 ## Outcome
 
@@ -541,5 +541,39 @@ document first.
 - `./scripts/test-unit.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
 - `./scripts/check.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
 
-Implementation sequence 3 is complete. Library presentation and recovery are
-next; the playback invalidation boundary is not invoked by removal UI yet.
+### 2026-07-14 — Library presentation milestone
+
+- Added row-level Remove for available and unavailable songs with full-swipe
+  disabled, plus unavailable-row Re-import through the shared import
+  presentation and equivalent named accessibility actions.
+- Added one item-driven confirmation route with current-playback consequences,
+  explicit managed-resource and original-file messaging, destructive Remove,
+  and Cancel.
+- Kept the pre-confirmation swipe action visually red without assigning the
+  destructive button role, preventing List from briefly animating the row as
+  deleted before confirmation. Removal text also replaces internal UUID or
+  UUID-filename titles with the existing Unknown Title fallback.
+- Publish the accepted-removal Library snapshot once and animate its stable-ID
+  row change with a native leading-edge transition, so the confirmed song slides
+  out without a duplicate-refresh flash.
+- Extended `LibraryStore` to coordinate removal through `LibraryRemoving`,
+  prevent repeated requests per identity, disable selection while removal is in
+  progress, invoke playback invalidation, refresh from the authoritative
+  repository after acceptance, and preserve the final-song empty state.
+- Added deterministic request-failure and pending-cleanup feedback, including a
+  stable launch issue queue, non-technical messages, Dismiss, and targeted Try
+  Again without restoring a removed song.
+- Added previews for current and non-current confirmation, removal progress,
+  and pending cleanup, plus unit coverage for coordination, repeated-request
+  protection, authoritative refresh, retry, and presentation text.
+- Added UI coverage for current and non-current removal, cancellation,
+  unavailable actions, final-song removal, cleanup failure and retry, and
+  destructive/recovery controls at accessibility XXXL.
+- `./scripts/test-unit.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
+- `./scripts/test-ui.sh`: passed 17 tests on iPhone 17 Pro Simulator, iOS 26.5.
+- Targeted sequence 4 UI suite: passed 6 tests on iPad Pro 13-inch (M5)
+  Simulator, iOS 26.5.
+
+Implementation sequence 4 is complete. Delivery verification and final product
+status updates remain in sequence 5, including `./scripts/check-all.sh` and the
+documented interactive and physical-resource checks.

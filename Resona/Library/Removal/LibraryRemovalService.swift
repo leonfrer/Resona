@@ -1,6 +1,6 @@
 import Foundation
 
-actor LibraryRemovalService: LibraryRemovalReconciling {
+actor LibraryRemovalService: LibraryRemovalReconciling, LibraryRemoving {
     private let repository: any LibraryRepository
     private let mediaStore: any ManagedMediaStoring
     private let mutationGate: LibraryMutationGate
