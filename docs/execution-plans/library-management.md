@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress — mutation cleanup milestone complete
+In progress — Basic Playback invalidation milestone complete
 
 ## Outcome
 
@@ -526,5 +526,20 @@ document first.
 - `./scripts/test-unit.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
 - `./scripts/check.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
 
-Implementation sequence 2 is complete. Basic Playback invalidation is next;
-removal presentation and playback selection blocking are not wired yet.
+### 2026-07-14 — Basic Playback invalidation milestone
+
+- Added the narrow main-actor `PlaybackRemovalInvalidating` boundary without
+  exposing `PlaybackStore` to Library persistence or managed storage.
+- Added temporary stable-ID selection blocking, matching selection-generation
+  invalidation, and matching current-item clearing through the existing engine
+  stop and audio-session deactivation path.
+- Preserved unrelated current playback and engine sessions while another song
+  identity is blocked for removal.
+- Added deterministic state and race coverage for current-item clearing,
+  unrelated playback preservation, blocked and later unblocked selection, and a
+  stale lookup completing after removal invalidation begins.
+- `./scripts/test-unit.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
+- `./scripts/check.sh`: passed on iPhone 17 Pro Simulator, iOS 26.5.
+
+Implementation sequence 3 is complete. Library presentation and recovery are
+next; the playback invalidation boundary is not invoked by removal UI yet.

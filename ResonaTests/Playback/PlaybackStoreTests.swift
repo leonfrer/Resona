@@ -175,6 +175,118 @@ struct PlaybackStoreTests {
         #expect(store.phase == .playing)
     }
 
+    @Test func removalInvalidationStopsAndClearsMatchingCurrentSong() async {
+        let item = playbackItem(title: "Current")
+        let engine = PlaybackStoreTestEngine(duration: 75)
+        let session = PlaybackStoreTestAudioSession()
+        let store = PlaybackStore(
+            itemProvider: PlaybackStoreTestProvider(items: [item.id: item]),
+            engine: engine,
+            audioSession: session
+        )
+        await store.select(songID: item.id)
+        engine.position = 30
+        let stopCountBeforeInvalidation = engine.stopCount
+
+        store.beginRemovalInvalidation(for: item.id)
+
+        #expect(store.currentItem == nil)
+        #expect(store.phase == .idle)
+        #expect(store.position == 0)
+        #expect(store.duration == nil)
+        #expect(store.pendingSelectionID == nil)
+        #expect(!store.canSeek)
+        #expect(engine.stopCount == stopCountBeforeInvalidation + 1)
+        #expect(session.deactivationCount == 1)
+    }
+
+    @Test func removalInvalidationPreservesUnrelatedPlayback() async {
+        let current = playbackItem(title: "Current")
+        let removedID = UUID()
+        let engine = PlaybackStoreTestEngine(duration: 80)
+        let session = PlaybackStoreTestAudioSession()
+        let store = PlaybackStore(
+            itemProvider: PlaybackStoreTestProvider(
+                items: [current.id: current]
+            ),
+            engine: engine,
+            audioSession: session
+        )
+        await store.select(songID: current.id)
+        let sessionID = engine.latestSessionID
+        let stopCountBeforeInvalidation = engine.stopCount
+
+        store.beginRemovalInvalidation(for: removedID)
+
+        #expect(store.currentItem == current)
+        #expect(store.phase == .playing)
+        #expect(store.position == 0)
+        #expect(store.duration == 80)
+        #expect(engine.latestSessionID == sessionID)
+        #expect(engine.stopCount == stopCountBeforeInvalidation)
+        #expect(session.deactivationCount == 0)
+    }
+
+    @Test func blockedSelectionIsRejectedUntilRemovalInvalidationEnds() async {
+        let current = playbackItem(title: "Current")
+        let blocked = playbackItem(title: "Blocked")
+        let provider = PlaybackStoreTestProvider(
+            items: [current.id: current, blocked.id: blocked]
+        )
+        let engine = PlaybackStoreTestEngine()
+        let store = PlaybackStore(
+            itemProvider: provider,
+            engine: engine,
+            audioSession: PlaybackStoreTestAudioSession()
+        )
+        await store.select(songID: current.id)
+        let preparedURLsBeforeBlockedSelection = engine.preparedURLs
+
+        store.beginRemovalInvalidation(for: blocked.id)
+        await store.select(songID: blocked.id)
+
+        #expect(store.currentItem == current)
+        #expect(store.phase == .playing)
+        #expect(engine.preparedURLs == preparedURLsBeforeBlockedSelection)
+
+        store.endRemovalInvalidation(for: blocked.id)
+        await store.select(songID: blocked.id)
+
+        #expect(store.currentItem == blocked)
+        #expect(store.phase == .playing)
+        #expect(engine.preparedURLs.last == availableURL(for: blocked))
+    }
+
+    @Test func staleSelectionCannotRecreateSongAfterRemovalBegins() async {
+        let item = playbackItem(title: "Resolving")
+        let provider = ControlledPlaybackStoreTestProvider()
+        let engine = PlaybackStoreTestEngine()
+        let store = PlaybackStore(
+            itemProvider: provider,
+            engine: engine,
+            audioSession: PlaybackStoreTestAudioSession()
+        )
+
+        let selection = Task {
+            await store.select(songID: item.id)
+        }
+        await provider.waitForRequest(songID: item.id)
+
+        store.beginRemovalInvalidation(for: item.id)
+        #expect(store.pendingSelectionID == nil)
+        #expect(store.phase == .idle)
+
+        await provider.resolve(songID: item.id, item: item)
+        await selection.value
+
+        #expect(store.currentItem == nil)
+        #expect(store.phase == .idle)
+        #expect(store.position == 0)
+        #expect(store.duration == nil)
+        #expect(engine.preparedURLs.isEmpty)
+        #expect(engine.playedSessionIDs.isEmpty)
+    }
+
     @Test func failuresAndInterruptionStopClaimingPlayback() async {
         let item = playbackItem(title: "Failure")
         let engine = PlaybackStoreTestEngine(duration: 45)

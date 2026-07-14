@@ -3,7 +3,7 @@ import Observation
 
 @MainActor
 @Observable
-final class PlaybackStore {
+final class PlaybackStore: PlaybackRemovalInvalidating {
     private(set) var currentItem: PlaybackItem?
     private(set) var phase: PlaybackPhase
     private(set) var position: TimeInterval
@@ -15,6 +15,7 @@ final class PlaybackStore {
     private let audioSession: any AudioSessionControlling
     nonisolated private let eventTasks = PlaybackEventTasks()
     private var activeSessionID: UUID?
+    private var blockedSelectionIDs: Set<UUID> = []
     private var selectionGeneration = UUID()
 
     init(
@@ -69,7 +70,8 @@ final class PlaybackStore {
     }
 
     func select(songID: UUID) async {
-        guard pendingSelectionID != songID else {
+        guard !blockedSelectionIDs.contains(songID),
+              pendingSelectionID != songID else {
             return
         }
 
@@ -128,6 +130,28 @@ final class PlaybackStore {
         duration = preparation.duration
         position = 0
         startPreparedPlayback()
+    }
+
+    func beginRemovalInvalidation(for songID: UUID) {
+        blockedSelectionIDs.insert(songID)
+
+        if pendingSelectionID == songID {
+            selectionGeneration = UUID()
+            pendingSelectionID = nil
+            if currentItem == nil, phase == .preparing {
+                phase = .idle
+            }
+        }
+
+        guard currentItem?.id == songID else {
+            return
+        }
+        stopActivePlayback()
+        clearCurrentPlaybackState()
+    }
+
+    func endRemovalInvalidation(for songID: UUID) {
+        blockedSelectionIDs.remove(songID)
     }
 
     func play() {
@@ -223,6 +247,13 @@ final class PlaybackStore {
         if shouldDeactivate {
             try? audioSession.deactivate()
         }
+    }
+
+    private func clearCurrentPlaybackState() {
+        currentItem = nil
+        phase = .idle
+        position = 0
+        duration = nil
     }
 
     private func synchronizePosition(sessionID: UUID) {

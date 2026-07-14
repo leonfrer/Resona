@@ -10,7 +10,7 @@ The product direction is described in `README.md`. A feature listed there is pla
 
 ## Current implementation
 
-The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, and the persistence and cleanup milestones of Library Management in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified; playback invalidation and user-facing removal are not implemented yet:
+The repository now contains the Import to Songs List slice, the implemented Basic Playback runtime, and the persistence, cleanup, and playback-invalidation milestones of Library Management in a single iOS application target, a unit-test target, and a UI-test target. The approved Audio background mode and hands-on background and locked-device audio behavior are verified; user-facing removal coordination is not implemented yet:
 
 - `ResonaApp` is the composition root.
 - It creates a disk-backed, versioned SwiftData `ModelContainer` using `ResonaMigrationPlan`.
@@ -32,10 +32,11 @@ The repository now contains the Import to Songs List slice, the implemented Basi
 - `ImportSessionModel` consumes import events and owns one operation's progress, results, cancellation, Choose Files recovery, and one-file retry. `ImportSheet` remains presented while active and owns its actions and dismissal.
 - `SongRow` displays artwork or a standard placeholder, normalized title, artist fallback, optional duration, and a labeled unavailable state. Only available rows become playback buttons.
 - `LibraryPlaybackItemProvider` maps a freshly resolved `LibrarySong` into immutable Playback input without exposing SwiftData, managed storage, or import implementation types.
-- `PlaybackStore` is the sole live owner of the current item, mutually exclusive phase, elapsed position, playable duration, failure, selection generation, and active engine session. It serializes transport commands and ignores stale selection results and tagged engine events.
+- `PlaybackStore` is the sole live owner of the current item, mutually exclusive phase, elapsed position, playable duration, failure, selection generation, active engine session, and temporary removal-selection blocks. It serializes transport commands, rejects blocked identities, invalidates matching in-flight resolution, and ignores stale selection results and tagged engine events.
+- `PlaybackRemovalInvalidating` is the narrow main-actor Library-to-Playback boundary for temporarily blocking one removal identity, stopping and clearing a matching current item, and later removing the block without exposing Playback internals to Library persistence or storage.
 - `AVAudioPlayerEngine` owns one local `AVAudioPlayer`, its retained delegate bridge, tagged event stream, and position publication. `AVAudioSessionController` configures the playback category, defers explicit activation until playback, deactivates on silent states, and reports interruption start.
 - `CurrentSongBar` and item-driven `PlayerView` render shared Playback state and send commands without creating a second player or changing transport merely through presentation. Resource recovery reuses the Library import presentation.
-- Queue, playback invalidation for removal, user-facing removal coordination, Now Playing metadata, remote commands, restoration, and full interruption or route-change policy do not exist yet.
+- User-facing removal coordination does not invoke playback invalidation yet. Queue behavior, Now Playing metadata, remote commands, restoration, and full interruption or route-change policy do not exist yet.
 
 ### Current runtime flow
 
@@ -63,6 +64,8 @@ PlaybackStore
   -> freshly resolves selected IDs through LibraryPlaybackItemProvider
   -> prepares one tagged engine session and activates audio before Play
   -> owns play, pause, seek, retry, completion, failure, and stale-event rules
+  -> temporarily blocks a removal identity and invalidates matching current or
+     in-flight state through PlaybackRemovalInvalidating
   -> remains empty after relaunch because playback state is not persisted
 
 AVAudioPlayerEngine / AVAudioSessionController
@@ -127,7 +130,7 @@ Resona/
 ├── Playback/
 │   ├── Domain/                    Current item, phase, and typed failure values
 │   ├── Engine/                    Playback/audio-session interfaces and AVFoundation adapters
-│   ├── Library/                   Stable-ID Library-to-Playback provider boundary
+│   ├── Library/                   Stable-ID provider and removal-invalidation boundaries
 │   └── Presentation/              PlaybackStore, CurrentSongBar, PlayerView, and formatting
 └── Assets.xcassets                App icons, accent color, and visual assets
 
@@ -135,7 +138,7 @@ ResonaTests/                       Library, Playback state-machine, adapter, and
 ResonaUITests/                     Import, Library, and critical Basic Playback UI journeys
 ```
 
-The Library and Playback folders are established source boundaries inside the application target, not separate Swift packages. Playback consumes canonical Library values only through `PlaybackItemProviding`; presentation reaches feature behavior through feature-facing state and interfaces.
+The Library and Playback folders are established source boundaries inside the application target, not separate Swift packages. Playback consumes canonical Library values only through `PlaybackItemProviding`; Library removal can affect live Playback state only through `PlaybackRemovalInvalidating`. Presentation reaches feature behavior through feature-facing state and interfaces.
 
 ## Target architectural boundaries
 
@@ -183,7 +186,7 @@ The Playback boundary owns the authoritative playback state:
 
 Playback must have one authoritative state owner. UI state may reflect playback state but must not become a second source of truth.
 
-The implemented Basic Playback subset uses `PlaybackStore` as that owner and `AVAudioPlayer` behind `AudioPlaybackEngine` for one managed local song. Engine events carry a session ID so replaced sessions cannot mutate current state. `AudioSessionControlling` isolates activation and interruption-start behavior. Queue behavior, MediaPlayer integration, restoration, and broader interruption or route policy remain planned.
+The implemented Basic Playback subset uses `PlaybackStore` as that owner and `AVAudioPlayer` behind `AudioPlaybackEngine` for one managed local song. Engine events carry a session ID so replaced sessions cannot mutate current state. `AudioSessionControlling` isolates activation and interruption-start behavior. `PlaybackRemovalInvalidating` adds temporary stable-ID selection blocking and matching current or in-flight invalidation without adding Library persistence responsibility to Playback. Queue behavior, MediaPlayer integration, restoration, and broader interruption or route policy remain planned.
 
 ### Presentation
 
@@ -218,7 +221,7 @@ These boundaries are invariants; the exact types, folder layout, and use of prot
 
 The existing `Item` model remains scaffold data, not a music-library model. It is retained through schema V2 so the migration chain remains additive and non-destructive. Removing it requires a separately approved migration decision.
 
-`LibrarySongRecord` is the active persisted music-library model. `LibrarySongRemovalRecord` is the minimal V2 pending-cleanup intent containing the former identity, display title, and managed filenames. `SwiftDataLibraryRepository` owns their `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth. `LibraryRemovalService` owns managed-resource cleanup, tombstone finalization, explicit retry, and launch reconciliation. Playback invalidation and user-facing removal remain unimplemented.
+`LibrarySongRecord` is the active persisted music-library model. `LibrarySongRemovalRecord` is the minimal V2 pending-cleanup intent containing the former identity, display title, and managed filenames. `SwiftDataLibraryRepository` owns their `ModelContext` access and exposes immutable Library domain values. Resource availability is derived through `LibraryResourceResolving` rather than persisted as an independent source of truth. `LibraryRemovalService` owns managed-resource cleanup, tombstone finalization, explicit retry, and launch reconciliation. Playback invalidation exists behind its narrow protocol; user-facing removal coordination remains unimplemented.
 
 `ManagedMediaStore` owns app-managed resources under the versioned `ManagedLibrary/v1` root. Staging and final directories share that root so accepted resources can move to final identity-derived filenames without crossing volumes. Reconciliation consumes the repository's combined active and pending-removal filename snapshot and removes abandoned staging work plus genuinely unreferenced final resources; it never treats file presence as a persisted library record or bypasses tombstone-owned cleanup.
 
@@ -228,7 +231,7 @@ The managed root currently lives in the app's Application Support directory. Aud
 
 `LibraryStore` owns the shared presentation snapshot and load state. `ImportSessionModel` owns only one sheet operation and never becomes a second durable source of library truth.
 
-`PlaybackStore` owns only live, non-persisted Basic Playback state. Relaunch begins in `idle`; it does not restore a current item or start audio. Its current item contains canonical Library metadata plus freshly resolved availability, while the engine's finite positive duration is authoritative for seeking.
+`PlaybackStore` owns only live, non-persisted Basic Playback state plus temporary, non-persisted removal-selection blocks. Relaunch begins in `idle`; it does not restore a current item or start audio. Its current item contains canonical Library metadata plus freshly resolved availability, while the engine's finite positive duration is authoritative for seeking.
 
 ## Platform integrations
 
