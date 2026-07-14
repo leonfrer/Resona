@@ -32,7 +32,8 @@ When documents disagree, do not choose the most detailed statement automatically
 - Behavior changes update the owning product specification before or with implementation.
 - Boundary, ownership, schema, persistence technology, or platform-integration changes update `ARCHITECTURE.md` after implementation is verified.
 - Implementation-only decisions stay in code or the active execution plan.
-- Performance or capacity changes update `product-specs/quality-attributes.md`.
+- Performance, capacity, or storage-policy changes update
+  `product-specs/quality-attributes.md`.
 - Test-policy changes update `testing.md`; release-gate changes update `release-process.md` or `delivery-checklist.md`.
 
 See `AGENTS.md` for the minimal reading set by task type, `execution-plans/README.md` for plan lifecycle rules, and `execution-plans/tech-debt-tracker.md` for tracked cleanup work.

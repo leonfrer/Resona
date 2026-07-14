@@ -103,9 +103,10 @@ Physical-device priority does not eliminate Simulator coverage. Release work sti
 ## Commands
 
 - On an eligible physical device, use XcodeBuildMCP or an equivalent `xcodebuild` destination to run the `Resona` scheme's required unit and UI test actions.
-- `./scripts/check.sh`: standard fast Simulator suite; currently runs unit and integration tests.
-- `./scripts/check-all.sh`: full Simulator suite including serial UI tests.
-- `./scripts/build.sh`, `./scripts/test-unit.sh`, and `./scripts/test-ui.sh`: targeted validation.
-- Override `DESTINATION` to validate a relevant iPhone or iPad Simulator.
+- `./scripts/check.sh`: standard fast Simulator suite; currently runs unit and integration tests at one selected destination.
+- `./scripts/check-all.sh`: full suite, including serial UI tests, at one selected Simulator destination. Run it separately for every required destination; it does not create a runtime matrix automatically.
+- `./scripts/build.sh`: targeted unsigned build for a generic iOS Simulator destination.
+- `./scripts/test-unit.sh` and `./scripts/test-ui.sh`: targeted test actions.
+- `DESTINATION` selects the Simulator used by the test scripts and their `check.sh` and `check-all.sh` wrappers. Each invocation uses one destination.
 
 The active execution plan maps feature acceptance criteria to the required test layers. The delivery report records exact commands, destinations, results, warnings, and unverified checks.

@@ -19,38 +19,49 @@ Experience foundation
 
 The experience foundation defines cross-feature navigation and feedback principles. The library foundation defines what an imported song is and owns its durable identity, normalized metadata contract, supported-format policy, and managed audio resource. Import reads external files and creates conforming library songs, the library UI presents and manages them, and playback consumes their stable identities and available audio resources.
 
-This dependency order does not require completing every library feature before import or playback. Work should proceed in the smallest end-to-end slices described below.
+This dependency order describes rule ownership. It does not prescribe an
+implementation sequence or require completing every library feature before
+import or playback.
 
 ## Specifications
 
-| Specification | Status | Implementation |
-| --- | --- | --- |
-| [Experience foundation](experience-foundation.md) | Active | Import, library, Basic Playback, removal feedback, and removal accessibility subsets verified |
-| [Library foundation](library-foundation.md) | Active | Identity, storage, metadata, consistency, and removal subsets implemented and verified |
-| [Local audio import](local-audio-import.md) | Active | Import to Songs List slice implemented and verified |
-| [Music library](music-library.md) | Active | Songs List, playback selection, and Library Management implemented and verified |
-| [Basic playback](basic-playback.md) | Implemented | Runtime, Audio background mode, automated suites, and physical background/lock behavior verified |
-| [Playback integration](playback.md) | Active | Runtime and automated Simulator coverage complete; physical system-surface acceptance pending |
-| [Quality attributes](quality-attributes.md) | Active | Initial performance and storage targets defined; release evidence pending |
+| Specification | Lifecycle status |
+| --- | --- |
+| [Experience foundation](experience-foundation.md) | Active |
+| [Library foundation](library-foundation.md) | Active |
+| [Local audio import](local-audio-import.md) | Active |
+| [Music library](music-library.md) | Active |
+| [Basic playback](basic-playback.md) | Implemented |
+| [Playback integration](playback.md) | Active |
+| [Quality attributes](quality-attributes.md) | Active |
 
-## Implementation readiness
+Lifecycle status records whether behavior is approved or fully accepted.
+Delivery progress and verification evidence belong in the
+[execution-plan index](../execution-plans/README.md); the current implementation
+map belongs in `ARCHITECTURE.md`.
 
-The active specifications approve the remaining Foundation and Music Library work. Concrete SwiftData fields, managed-file layout, playback-engine boundaries, authoritative playback-state representation, and other type boundaries remain implementation decisions; an execution plan must record them before they are introduced and `ARCHITECTURE.md` must be updated when the current system map changes.
+## Product increments
 
-The [execution-plan index](../execution-plans/README.md) separates active plans from historical verification records. The archived [Library Management Execution Plan](../execution-plans/archive/library-management.md) retains its delivery evidence.
+These increments describe coherent product outcomes, not a current delivery
+schedule or implementation sequence:
 
-Basic Playback is implemented, including its explicitly approved Audio background mode and minimum background continuation. Playback Integration code and automated Simulator coverage are complete. Its specification remains Active until physical-device Lock Screen, Control Center, headset, interruption, route-change, and audible background acceptance is recorded in the execution plan.
+- **Foundations:** shared experience direction, supported formats, durable song
+  identity, metadata contract, managed-resource ownership, duplicate policy,
+  and consistency rules
+- **Import to songs list:** app-managed offline copies presented in a persistent
+  songs list with a useful empty state
+- **Basic playback:** reliable play, pause, seek, natural-end, and minimum
+  background behavior with one authoritative playback state
+- **Library management:** safe song removal with defined current-item and queue
+  behavior
+- **Library expansion:** album and artist browsing informed by real imported
+  metadata
+- **Playback integration:** queue modes, system controls, interruption and route
+  handling, and silent restoration
 
-## Recommended delivery slices
-
-1. **Foundations:** resolve the shared experience direction, supported formats, durable song identity, metadata contract, managed-resource ownership, duplicate policy, and consistency rules.
-2. **Import to songs list:** import supported files into app-managed storage and display successful imports in a persistent songs list with a useful empty state.
-3. **Basic playback:** start a song from the list and provide reliable play, pause, seek, end-of-song behavior, and minimum background continuation with one authoritative playback state.
-4. **Library management:** remove songs safely after interaction with the current item and queue has a defined policy.
-5. **Library expansion:** add album and artist browsing after real imported metadata is available to validate grouping behavior.
-6. **Playback integration:** add queue modes, system controls, interruption and route-change handling, and restoration while preserving Basic Playback's minimum background continuation.
-
-Each slice must leave the app in a coherent, testable state. Later slices must not be treated as prerequisites for validating an earlier one unless a specification says so explicitly.
+Each increment defines coherent, independently testable user value. A later
+increment does not become a prerequisite for accepting an earlier one unless an
+owning specification says so explicitly.
 
 ## Cross-feature decision ownership
 
@@ -76,7 +87,7 @@ This table locates each complete rule without restating it:
 
 - Resolve behavior-changing open questions before moving a specification to Active.
 - Update a specification when user-visible behavior or acceptance criteria change.
-- Update the implementation status only after verifying the documented acceptance criteria.
+- Update lifecycle status only after verifying the documented acceptance criteria.
 - Keep implementation steps and progress in execution plans rather than product specifications.
 - Keep algorithms, schemas, framework choices, concrete types, and file layouts out of product specifications.
 - State a complete behavior in one owning specification and link to it elsewhere.
