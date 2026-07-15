@@ -6,15 +6,15 @@ Execution plans translate approved behavior into temporary implementation decisi
 
 | Plan | State | Reading guidance |
 | --- | --- | --- |
-| [Playback Integration](playback-integration.md) | Active | Implementation complete; physical-device acceptance pending |
-| [Player Interface Refresh](player-interface-refresh.md) | Active | Implementation and manual acceptance complete; full verification pending |
+| [Player Interface Refresh](player-interface-refresh.md) | Active | Current documented acceptance is verified; additional interface scope remains to be defined and delivered |
 
-## Archived plans
+## Completed plans
 
 Completed plans are retained as historical verification records and are not required reading for current behavior or architecture.
 
 | Plan | State | Reading guidance |
 | --- | --- | --- |
+| [Playback Integration](playback-integration.md) | Complete | Verified automated, iPhone system-integration, and representative iPad acceptance record |
 | [Development Schema Simplification](archive/development-schema-simplification.md) | Complete | Verified single-schema development persistence record |
 | [Item Model Removal](archive/item-model-removal.md) | Complete | Verified TD-001 schema cleanup record |
 | [Library Management](archive/library-management.md) | Complete | Historical verification record only |

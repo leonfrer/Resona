@@ -2,8 +2,10 @@
 
 ## Status
 
-Active. Implementation and manual acceptance are complete. Full automated,
-device, visual, and accessibility verification remains pending.
+Active. Implementation, manual acceptance, full automated verification, and
+representative iPhone and iPad visual and accessibility inspection are complete
+for the currently documented scope. Additional player-interface ideas remain to
+be documented and delivered before this plan can close.
 
 ## Outcome
 
@@ -181,7 +183,29 @@ Documentation-only creation of this plan requires only document review, internal
 - The targeted scrubber UI regression passed on an iPhone 17 Pro Simulator running iOS 26.5.
 - `./scripts/test-ui.sh` passed 21 tests with no failures on the same Simulator after stabilizing Queue sheet dismissal and restoring deterministic queue mode before navigation assertions.
 - The user completed manual playback-page acceptance, including the revised scrubber interaction.
-- The unit and integration suite, physical-device checks, representative layout matrix, and complete VoiceOver, Increased Contrast, Reduce Transparency, and Reduce Motion inspection remain required before this plan can close.
+- Physical-device checks, the representative layout matrix, and complete VoiceOver, Increased Contrast, Reduce Transparency, and Reduce Motion inspection remain required before this plan can close.
+
+### 2026-07-15 — Full automated verification
+
+- `./scripts/check-all.sh` passed on an iPhone 17 Pro Simulator running iOS 26.5.
+- The complete `ResonaTests` unit and integration target passed with 116 tests and no failures. Parameterized cases produced 123 device/configuration executions in the result bundle.
+- The serial `ResonaUITests` run passed 21 executions with no failures: 17 app scenarios and 4 Light/Dark portrait/landscape launch configurations.
+- Xcode emitted the existing skipped-AppIntents-metadata, Simulator debugger-version, and duplicate Web accessibility bundle diagnostics. No new application source warning was introduced.
+- Automated verification completed before the physical-device, representative-layout, and interactive accessibility and visual evidence recorded below.
+
+### 2026-07-15 — iPhone visual and accessibility acceptance
+
+- Verified on an iPhone 17 Pro Max running iOS 26.5.2.
+- VoiceOver order and actions, accessibility Dynamic Type, and Light and Dark Mode passed for the current-song surface, full-screen player, scrubber, and Queue.
+- Reduce Motion removed the matched zoom and decorative control, artwork, scrubber, and dismissal-reset animations without preventing transport, seeking, Queue presentation, or downward dismissal.
+- Reduce Transparency and Increased Contrast preserved legible metadata, symbols, disabled states, scrubber progress, Liquid Glass treatment, and Queue state, both independently and together.
+
+### 2026-07-15 — iPad visual and accessibility acceptance
+
+- Verified on an iPad Pro 11-inch (2nd generation) running iPadOS 27.0 Beta.
+- Representative current-song, full-screen player, scrubber, and Queue layouts passed on iPad.
+- VoiceOver, Dynamic Type, Light and Dark Mode, Reduce Motion, Reduce Transparency, and Increased Contrast passed on iPad.
+- All automated, manual, device, visual, and accessibility evidence required by the currently documented scope is recorded. Additional player-interface work remains to be defined, so this plan remains Active.
 
 ## Risks and controls
 

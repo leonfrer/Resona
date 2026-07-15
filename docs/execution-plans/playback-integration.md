@@ -2,7 +2,9 @@
 
 ## Status
 
-Active. Implementation and automated iPhone Simulator verification are complete; physical-device system-surface, interruption, and route acceptance remains pending.
+Complete 2026-07-15. Implementation, automated iPhone Simulator verification,
+iPhone physical-device system-integration acceptance, and representative iPad
+layout and accessibility inspection are complete.
 
 ## Outcome
 
@@ -288,15 +290,25 @@ Verified on an iPhone 17 Pro Simulator running the latest installed iOS 26.5 run
 - `git diff --check` passed, and every internal link in the changed documentation resolves.
 - Xcode emitted the existing skipped-AppIntents-metadata, Simulator debugger-version, and duplicate Web accessibility bundle diagnostics. No new application source warning was introduced.
 
-Pending physical-device acceptance:
+Verified on an iPhone 17 Pro Max running iOS 26.5.2 with first-generation
+AirPods Pro:
 
-- Lock Screen and Control Center metadata and every supported command
-- Headset next, previous, play, pause, and route disconnection
-- Real interruption begin/end with both resume recommendations
-- Background and locked playback advancement with queue and Now Playing updates
-- Interactive VoiceOver order and representative iPhone and iPad layout inspection
+- Lock Screen and Control Center metadata, Play, Pause, Next, Previous, and seeking behaved consistently with in-app playback.
+- AirPods Play, Pause, Next, and Previous commands worked, and disconnecting the AirPods paused playback without automatic resume.
+- Phone and Siri interruptions paused and resumed playback according to the system recommendation.
+- Starting playback in another music app paused Resona. Stopping that user-selected playback source left Resona paused, correctly preserving the newer user intent instead of automatically reclaiming playback.
+- Background and locked-device natural advancement updated the queue and Now Playing state.
+- Terminating and relaunching restored the approved logical state without audible playback until an explicit Play command.
+- Interactive VoiceOver order, Dynamic Type, Light and Dark Mode, Reduce Motion, Reduce Transparency, and Increased Contrast passed on the iPhone.
 
-The plan remains Active and the product specification remains Active until those checks are recorded.
+Verified on an iPad Pro 11-inch (2nd generation) running iPadOS 27.0 Beta:
+
+- Representative player and Queue layouts passed on iPad.
+- VoiceOver, Dynamic Type, Light and Dark Mode, Reduce Motion, Reduce Transparency, and Increased Contrast passed on iPad.
+
+All required automated, system-integration, restoration, visual, and
+accessibility acceptance evidence is recorded. This plan is Complete and the
+Playback Integration product specification is Implemented.
 
 ## Risks and controls
 

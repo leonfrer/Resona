@@ -32,7 +32,7 @@ import or playback.
 | [Local audio import](local-audio-import.md) | Active |
 | [Music library](music-library.md) | Active |
 | [Basic playback](basic-playback.md) | Active |
-| [Playback integration](playback.md) | Active |
+| [Playback integration](playback.md) | Implemented |
 | [Quality attributes](quality-attributes.md) | Active |
 
 Lifecycle status records whether behavior is approved or fully accepted.
