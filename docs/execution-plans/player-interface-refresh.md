@@ -2,8 +2,9 @@
 
 ## Status
 
-Active. Implementation and manual acceptance are complete. Full automated,
-device, visual, and accessibility verification remains pending.
+Active. Implementation, manual acceptance, and full automated verification are
+complete. Physical-device, visual, and accessibility verification remains
+pending.
 
 ## Outcome
 
@@ -181,7 +182,15 @@ Documentation-only creation of this plan requires only document review, internal
 - The targeted scrubber UI regression passed on an iPhone 17 Pro Simulator running iOS 26.5.
 - `./scripts/test-ui.sh` passed 21 tests with no failures on the same Simulator after stabilizing Queue sheet dismissal and restoring deterministic queue mode before navigation assertions.
 - The user completed manual playback-page acceptance, including the revised scrubber interaction.
-- The unit and integration suite, physical-device checks, representative layout matrix, and complete VoiceOver, Increased Contrast, Reduce Transparency, and Reduce Motion inspection remain required before this plan can close.
+- Physical-device checks, the representative layout matrix, and complete VoiceOver, Increased Contrast, Reduce Transparency, and Reduce Motion inspection remain required before this plan can close.
+
+### 2026-07-15 — Full automated verification
+
+- `./scripts/check-all.sh` passed on an iPhone 17 Pro Simulator running iOS 26.5.
+- The complete `ResonaTests` unit and integration target passed with 116 tests and no failures. Parameterized cases produced 123 device/configuration executions in the result bundle.
+- The serial `ResonaUITests` run passed 21 executions with no failures: 17 app scenarios and 4 Light/Dark portrait/landscape launch configurations.
+- Xcode emitted the existing skipped-AppIntents-metadata, Simulator debugger-version, and duplicate Web accessibility bundle diagnostics. No new application source warning was introduced.
+- Automated verification is complete. Physical-device, representative-layout, and interactive accessibility and visual inspection remain pending.
 
 ## Risks and controls
 
