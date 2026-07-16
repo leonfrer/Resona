@@ -14,6 +14,7 @@ Completed plans are retained as historical verification records and are not requ
 
 | Plan | State | Reading guidance |
 | --- | --- | --- |
+| [iPhone Portrait-Only Orientation](iphone-portrait-orientation.md) | Complete | Verified portrait-only iPhone metadata and launch configurations while preserving the four-orientation iPad declaration and landscape launch coverage |
 | [Playback Integration](playback-integration.md) | Complete | Verified automated, iPhone system-integration, and representative iPad acceptance record |
 | [Development Schema Simplification](archive/development-schema-simplification.md) | Complete | Verified single-schema development persistence record |
 | [Item Model Removal](archive/item-model-removal.md) | Complete | Verified TD-001 schema cleanup record |
