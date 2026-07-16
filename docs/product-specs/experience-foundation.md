@@ -73,6 +73,8 @@ Every new major screen or reusable component must provide representative preview
 - Primary actions and failure recovery remain usable with VoiceOver and large Dynamic Type sizes.
 - Color, artwork, and motion are not the sole indicators of availability or playback state.
 - The same information architecture adapts to iPhone and iPad without making one device class a reduced-function version.
+- On iPhone, Resona supports the upright portrait orientation only. Rotating the device to either landscape orientation does not rotate the app interface.
+- On iPad, Resona supports upright portrait, upside-down portrait, and both landscape orientations so the interface continues to adapt across the full existing iPad orientation range.
 
 ## Acceptance criteria
 
@@ -93,6 +95,8 @@ Every new major screen or reusable component must provide representative preview
 - All recoverable errors in the core import-to-playback journey offer a relevant next action.
 - Core navigation and state changes remain understandable with Reduce Motion, VoiceOver, and large Dynamic Type enabled.
 - Major screens follow the native, content-first hierarchy in Light Mode and Dark Mode without clipped primary actions or color-only state communication.
+- On iPhone, the app launches and remains in upright portrait when the device is turned to either landscape orientation.
+- On iPad, the app continues to launch and rotate correctly in upright portrait, upside-down portrait, landscape left, and landscape right.
 
 ## Related documents
 

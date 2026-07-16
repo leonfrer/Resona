@@ -41,7 +41,7 @@ This slice changes presentation and navigation plus the transient selection stat
 - Move shuffle and repeat controls from the detailed player into Queue.
 - Replace the standard large-thumb `Slider` presentation with a thumb-free capsule media scrubber that expands during interaction and retains a comfortable interaction area and full accessibility behavior.
 - Adjust only the transient selection and phase gating in `PlaybackStore` needed to keep the current-song surface stable and prevent transport commands during replacement.
-- Adapt the refreshed surfaces to representative iPhone and iPad sizes, Light and Dark Mode, Increased Contrast, Reduce Transparency, Reduce Motion, VoiceOver, and accessibility Dynamic Type.
+- Adapt the refreshed surfaces to representative iPhone portrait and iPad portrait and landscape sizes, Light and Dark Mode, Increased Contrast, Reduce Transparency, Reduce Motion, VoiceOver, and accessibility Dynamic Type.
 - Update previews and critical UI coverage for the new presentation hierarchy.
 
 ### Out of scope
@@ -128,7 +128,7 @@ This slice changes presentation and navigation plus the transient selection stat
 ### 4. Adaptive and delivery verification
 
 - Run the targeted playback UI scenarios while iterating, then run the complete required suite.
-- Inspect the player and Queue in representative iPhone and iPad portrait and landscape layouts, including accessibility text sizes.
+- Inspect the player and Queue in representative iPhone portrait and iPad portrait and landscape layouts, including accessibility text sizes.
 - Inspect Light and Dark Mode, Increased Contrast, Reduce Transparency, Reduce Motion, VoiceOver order and escape behavior, and Liquid Glass legibility over representative artwork and Library content.
 - Record exact commands, destinations, screenshots where useful, warnings, and any unverified evidence in this plan.
 - Exit criterion: automated checks pass, interactive visual and accessibility checks are recorded, and product-spec lifecycle status reflects only verified behavior.
@@ -159,7 +159,7 @@ This slice changes presentation and navigation plus the transient selection stat
 - Verify the player fills the viewport, follows the downward drag, cancels cleanly below threshold, and dismisses above threshold without fighting horizontal scrubbing.
 - Verify the Queue sheet rises from the bottom, scrolls long queues, and returns focus correctly.
 - Verify VoiceOver order, icon-only action names, adjustable scrubber behavior, accessibility escape dismissal, and focus restoration.
-- Verify representative iPhone and iPad sizes in portrait and landscape, plus Light Mode, Dark Mode, and Reduce Motion.
+- Verify representative iPhone portrait and iPad portrait and landscape sizes, plus Light Mode, Dark Mode, and Reduce Motion.
 
 ## Required verification
 
